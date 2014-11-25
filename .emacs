@@ -1,4 +1,12 @@
 (setq debug-on-error t)
+(setq warning-minimum-level :error)
+
+(require 'server)
+
+(unless (server-running-p)
+  (prog
+   (message "Starting server") 
+   (server-start)))
 
 (let ((temporary-file-directory "/tmp/"))
   (setq backup-directory-alist
@@ -13,9 +21,7 @@
                  (> (- current (float-time (nth 5 (file-attributes file))))
                     week))
         (message "%s" file)
-        (delete-file file)))
-    )
-  )
+        (delete-file file)))))
 
 
 (setq mac-command-modiffier 'meta)
@@ -25,11 +31,18 @@
                             (flyspell-mode)
                             (auto-fill-mode)))
 
+
 (setq inferior-lisp-program "/usr/local/bin/sbcl")
 (add-to-list 'load-path "~/.emacs.d/slime-2.8")
 (require 'slime)
-(add-hook 'lisp-mode-hook (lambda () (slime-mode t)))
-(add-hook 'inferior-lisp-mode-hook (lambda () (inferior-slime-mode t)))
+
+(add-hook 'lisp-mode-hook 'set-up-slime-ac)
+(add-hook 'slime-repl-mode-hook 'set-up-slime-ac)
+(eval-after-load "auto-complete"
+  '(add-to-list 'ac-modes 'slime-repl-mode))
+
+(add-hook 'lisp-mode-hook (lambda () (slime-mode t) (auto-complete-mode)))
+(add-hook 'inferior-lisp-mode-hook (lambda () (inferior-slime-mode t) (auto-complete-mode)))
 
 
 (setq TeX-auto-save t)
@@ -42,7 +55,7 @@
 (add-hook 'LaTeX-mode-hook (lambda () (auto-fill-mode -1)))
 (setq reftex-plug-into-AUCTeX t)
 (setq TeX-PDF-mode t)
- 
+(setq LaTeX-command-style '(("" "%(PDF)%(latex) -file-line-error %S%(PDFout)"))) 
 ;; Use Skim as viewer, enable source <-> PDF sync
 ;; make latexmk available via C-c C-c
 ;; Note: SyncTeX is setup via ~/.latexmkrc (see below)
@@ -129,3 +142,6 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  )
+(put 'downcase-region 'disabled nil)
+
+
