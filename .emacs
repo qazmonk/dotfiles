@@ -4,8 +4,6 @@
 (require 'server)
 
 (unless (server-running-p)
-  (prog
-   (message "Starting server") 
    (server-start)))
 
 (let ((temporary-file-directory "/tmp/"))
