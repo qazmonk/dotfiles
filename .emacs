@@ -1,11 +1,14 @@
 (setq debug-on-error t)
 (setq warning-minimum-level :error)
+(setq inhibit-splash-screen t)
 
 (require 'server)
 
+;;dunno if this actually works
 (unless (server-running-p)
-   (server-start)))
+   (server-start))
 
+;;dont store backups in the same directory as files and periodically delete them as well
 (let ((temporary-file-directory "/tmp/"))
   (setq backup-directory-alist
         `((".*" . ,temporary-file-directory)))
@@ -21,11 +24,11 @@
         (message "%s" file)
         (delete-file file)))))
 
-(require 'auto-complete)
-(global-auto-complete-mode t)
+;;change keys for mac keyboard
+(setq mac-command-modifier 'meta)
+(setq mac-option-modifier 'meta)
 
-(setq mac-command-modiffier 'meta)
-(setq mac-command-key-is-meta t)
+
 (add-hook 'c-mode-hook (lambda () (setq indent-tabs-mode nil)))
 (add-hook 'text-mode-hook (lambda () (setq indent-tabs-mode t)
                             (flyspell-mode)
@@ -82,67 +85,14 @@
 
 (server-start)
 
-(add-to-list 'load-path "~/.emacs.d/")
-(add-to-list 'load-path "/Users/Nate/.emacs.d/emacs-eclim/")
 
+;;Stop autocompleting when I hit enter
+(add-hook 'css-mode-hook
+          (lambda ()
+            (define-key ac-complete-mode-map "\r" nil)))
 
-
-(defun ome-eclim-setup ()
-  ;; (add-to-list 'eclim-eclipse-dirs "/opt/eclipse")
-  (setq eclim-auto-save t
-        eclim-executable (or (executable-find "eclim") "/opt/eclipse/eclim")
-        eclimd-executable (or (executable-find "eclimd") "/opt/eclipse/eclimd")
-        eclimd-wait-for-process nil
-        eclimd-default-workspace "~/Google_Drive/Workspace/"
-        help-at-pt-display-when-idle t
-        help-at-pt-timer-delay 0.1)
-
-  ;; Call the help framework with the settings above & activate
-  ;; eclim-modex
-  (help-at-pt-set-timer)
-
-  ;; keep consistent which other auto-complete backend.
-  (custom-set-faces
-   '(ac-emacs-eclim-candidate-face ((t (:inherit ac-candidate-face))))
-   '(ac-emacs-eclim-selection-face ((t (:inherit ac-selection-face)))))
-
-  ;; Hook eclim up with auto complete mode
-  ;;(require 'ac-emacs-eclim-source)
-  ;;(ac-emacs-eclim-config)
-
-  (require 'eclimd)
-
-  (add-hook 'java-mode-hook
-            (lambda ()
-              (add-to-list 'ac-sources 'ac-source-emacs-eclim)
-              (eclim-mode t))))
-
-
-;; regular auto-complete initialization
-(require 'auto-complete-config)
-(ac-config-default)
-
-;; add the emacs-eclim source
-(require 'ac-emacs-eclim-source)
-(ac-emacs-eclim-config)
-
-(ome-eclim-setup)
-
-(when (executable-find "eclipse")
-  (ome-install 'eclim))
-
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(indent-tabs-mode nil))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
-(put 'downcase-region 'disabled nil)
-
-
+;;Configuration for org mode
+(add-hook 'org-mode-hook 'turn-on-font-lock) ; not needed when global-font-lock-mode is on
+(global-set-key "\C-cl" 'org-store-link)
+(global-set-key "\C-ca" 'org-agenda)
+(global-set-key "\C-cb" 'org-iswitchb)
