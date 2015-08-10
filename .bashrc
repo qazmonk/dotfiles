@@ -5,6 +5,7 @@ alias emacs="/Applications/Emacs.app/Contents/MacOS/bin/emacsclient -c -a \"\""
 alias sshpclassic="ssh pclassic@pclassic.org"
 alias ssheniac="ssh nchodosh@eniac.seas.upenn.edu"
 alias e="emacs"
+alias kill-emacs="e -e \"(kill-emacs)\""
 alias calc="~/dotfiles/cmds/calc.sh"
 set -o emacs
 
