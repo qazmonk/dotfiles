@@ -12,7 +12,6 @@
 
 
 ;;dunno if this actually work
-(require 'server)
 (if (not (server-running-p))
     (server-start))
 
