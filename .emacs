@@ -1,17 +1,22 @@
+;;;;;;;;;;;;;;;;;;;
+;; GENERAL STUFF ;;
+;;;;;;;;;;;;;;;;;;;
+
 (tool-bar-mode 0)
-(setq debug-on-error nil)
+(setq debug-on-error t)
 ;(setq warning-minimum-level :error)
 (setq inhibit-splash-screen t)
 
+(require 'package)
+(package-initialize)
+(setq package-archives
+      '(("gnu" . "http://elpa.gnu.org/packages/")
+	("marmalade" . "http://marmalade-repo.org/packages/")
+	("melpa" . "http://melpa.milkbox.net/packages/")))
 
 
-(add-to-list 'load-path "~/.emacs.d/auto-complete")
-(require 'auto-complete-config)
-(add-to-list 'ac-dictionary-directories "~/.emacs.d/dict")
-(ac-config-default)
 
-
-;;dunno if this actually work
+;;dunno if this actually works (I don't think it does)
 (require 'server)
 (if (not (server-running-p))
     (server-start))
@@ -39,6 +44,77 @@
 (setq mac-command-modifier 'meta)
 (setq mac-option-modifier 'super)
 
+;;GET THOSE GOD DAMN TABS OUT OF HERE
+(setq-default indent-tabes-mode nil)
+
+
+(defun my-merge-imenu ()
+  (interactive)
+  (let ((mode-imenu (imenu-default-create-index-function))
+        (custom-imenu (imenu--generic-function imenu-generic-expression)))
+;;    (delete-dups (append mode-imenu custom-imenu))))
+    custom-imenu))
+
+(add-hook 'text-mode-hook (lambda () 
+                            (flyspell-mode)
+                            (auto-fill-mode)))
+
+(defun push-mark-no-activate ()
+  "Pushes `point' to `mark-ring' and does not activate the region
+   Equivalent to \\[set-mark-command] when \\[transient-mark-mode] is disabled"
+  (interactive)
+  (push-mark (point) t nil)
+  (message "Pushed mark to ring"))
+
+(global-set-key (kbd "C-`") 'push-mark-no-activate)
+
+(defun jump-to-mark ()
+  "Jumps to the local mark, respecting the `mark-ring' order.
+  This is the same as using \\[set-mark-command] with the prefix argument."
+  (interactive)
+  (set-mark-command 1))
+(global-set-key (kbd "M-`") 'jump-to-mark)
+
+
+(require 'visible-mark)
+(defface mark-1
+  '((((type tty) (class mono))
+     (:inverse-video t))
+    (t (:background "turquoise2"))) "")
+(defface mark-2
+  '((((type tty) (class mono)))
+    (t (:background "turquoise3"))) "")
+(defface mark-3
+  '((((type tty) (class mono)))
+    (t (:background "turquoise4"))) "")
+(setq visible-mark-faces (quote (mark-1 mark-2 mark-3)))
+(setq visible-mark-max 3)
+(global-visible-mark-mode)
+
+(global-set-key (kbd "M-i") 'helm-imenu)
+(require 'helm-config)
+
+(defadvice yes-or-no-p (around prevent-dialog activate)
+  "Prevent yes-or-no-p from activating a dialog"
+  (let ((use-dialog-box nil))
+    ad-do-it))
+(defadvice y-or-n-p (around prevent-dialog-yorn activate)
+  "Prevent y-or-n-p from activating a dialog"
+  (let ((use-dialog-box nil))
+    ad-do-it))
+
+(defun my-activate-adaptive-wrap-prefix-mode ()
+    "Toggle `visual-line-mode' and `adaptive-wrap-prefix-mode' simultaneously."
+    (adaptive-wrap-prefix-mode (if visual-line-mode 1 -1)))
+(add-hook 'visual-line-mode-hook 'my-activate-adaptive-wrap-prefix-mode)
+;;;;;;;;;;;;;;;;;
+;; PROGRAMMING ;;
+;;;;;;;;;;;;;;;;;
+(add-to-list 'load-path "~/.emacs.d/auto-complete")
+(require 'auto-complete-config)
+(add-to-list 'ac-dictionary-directories "~/.emacs.d/dict")
+(ac-config-default)
+(setq global-auto-complete-mode t)
 
 (setq special-display-buffer-names
       '("*compilation*"))
@@ -48,13 +124,26 @@
         (split-window)
         (get-buffer-window buffer 0)))
 
-(defun my-merge-imenu ()
-  (interactive)
-  (let ((mode-imenu (imenu-default-create-index-function))
-        (custom-imenu (imenu--generic-function imenu-generic-expression)))
-;;    (delete-dups (append mode-imenu custom-imenu))))
-    custom-imenu))
+;; Close the compilation window when compilation succedes
+(setq 
+ compilation-exit-message-function
+ (lambda (status code msg)
+   ;; If M-x compile exists with a 0
+   (when (and (eq status 'exit) (zerop code))
+     ;; then bury the *compilation* buffer, so that C-x b doesn't go there
+     ;;(switch-to-prev-buffer (get-buffer-window "*compilation*") 'kill)
+     (bury-buffer)
+     ;; and delete the *compilation* window
 
+     (delete-window (get-buffer-window (get-buffer "*compilation*"))))
+   ;; Always return the anticipated result of compilation-exit-message-function
+   (cons msg code)))
+
+
+
+;;;;;;;;;
+;; C++ ;;
+;;;;;;;;;
 (defun my-c++-mode-hook ()
   (add-to-list
    'imenu-generic-expression
@@ -84,97 +173,93 @@
 
 (add-hook 'c-mode-common-hook 'my-c-mode-common-hook)
 
-(add-hook 'text-mode-hook (lambda () (setq indent-tabs-mode t)
-                            (flyspell-mode)
-                            (auto-fill-mode)))
+;;autocomplete for C coding
+(add-to-list 'load-path "~/.emacs.d/auto-complete/auto-complete-clang")
+(require 'auto-complete-clang)
 
+(add-to-list 'auto-mode-alist '("\\.h\\'" . c++-mode))
+
+;;;;;;;;;;
+;; LISP ;;
+;;;;;;;;;;
 
 (setq inferior-lisp-program "/usr/local/bin/sbcl")
 (add-to-list 'load-path "~/.emacs.d/slime-2.8")
-(require 'slime)
+(require 'slime-autoloads)
 
-
-
+(add-to-list 'slime-contribs 'inferior-slime)
+(add-to-list 'slime-contribs 'slime-fancy)
 
 (add-hook 'lisp-mode-hook 'set-up-slime-ac)
 (add-hook 'slime-repl-mode-hook 'set-up-slime-ac)
 (eval-after-load "auto-complete"
   '(add-to-list 'ac-modes 'slime-repl-mode))
 
-
-
-(setq TeX-auto-save t)
-(setq TeX-parse-self t)
-;(setq-default TeX-master nil)
-(add-hook 'LaTeX-mode-hook 'visual-line-mode)
-(add-hook 'LaTeX-mode-hook 'flyspell-mode)
-(add-hook 'LaTeX-mode-hook 'LaTeX-math-mode)
-(add-hook 'LaTeX-mode-hook 'turn-on-reftex)
-(add-hook 'LaTeX-mode-hook (lambda () (auto-fill-mode -1)))
-(setq reftex-plug-into-AUCTeX t)
-(setq TeX-PDF-mode t)
-(setq LaTeX-command-style '(("" "%(PDF)%(latex) -file-line-error %S%(PDFout)"))) 
-;; Use Skim as viewer, enable source <-> PDF sync
-;; make latexmk available via C-c C-c
-;; Note: SyncTeX is setup via ~/.latexmkrc (see below)
-(add-hook 'LaTeX-mode-hook (lambda ()
-			     (push
-			      '("latexmk" "latexmk -pdf %s" TeX-run-TeX nil t
-				:help "Run latexmk on file")
-			      TeX-command-list)))
-(add-hook 'TeX-mode-hook '(lambda () (setq TeX-command-default "latexmk")))
-
-;; use Skim as default pdf viewer
-;; Skim's displayline is used for forward search (from .tex to .pdf)
-;; option -b highlights the current line; option -g opens Skim in the background
-(require 'package)
-(package-initialize)
-(setq package-archives
-      '(("gnu" . "http://elpa.gnu.org/packages/")
-	("marmalade" . "http://marmalade-repo.org/packages/")
-	("melpa" . "http://melpa.milkbox.net/packages/")))
-
-
-(setq TeX-view-program-selection '((output-pdf "PDF Viewer")))
-(setq TeX-view-program-list
-      '(("PDF Viewer" "/Applications/Skim.app/Contents/SharedSupport/displayline -b -g %n %o %b")))
-
-(server-start)
-
-
-;;Stop autocompleting when I hit enter
-;(add-hook 'css-mode-hook
-;          (lambda ()
-;            (define-key ac-complete-mode-map "\r" nil)))
-
-
-
-
-;;autocomplete for C coding
-(add-to-list 'load-path "~/.emacs.d/auto-complete/auto-complete-clang")
-(require 'auto-complete-clang)
-
+(defvar electrify-return-match
+    "[\]}\)\"]"
+    "If this regexp matches the text after the cursor, do an \"electric\"
+  return.")
+(defun electrify-return-if-match (arg)
+    "If the text after the cursor matches `electrify-return-match' then
+  open and indent an empty line between the cursor and the text.  Move the
+  cursor to the new line."
+    (interactive "P")
+    (let ((case-fold-search nil))
+      (if (looking-at electrify-return-match)
+	  (save-excursion (newline-and-indent)))
+      (newline arg)
+      (indent-according-to-mode)))
+(defun nates-general-lisp-mode ()
+  (auto-complete-mode t)
+  (paredit-mode t)
+  (show-paren-mode t)
+  (highlight-parentheses-mode t)
+  (local-set-key (kbd "RET") 'electrify-return-if-match))
 (defun nates-lisp-mode ()
   (slime-mode)
-  (auto-complete-mode t)
+  (local-set-key (kbd "C-M-S-s-r")
+                 (lambda ()
+                   (interactive)
+                   (shell-command "osascript ~/Dropbox/AppleScript/refresh-preview.scpt")))
   (set (make-local-variable 'lisp-indent-function)
-       'common-lisp-indent-function))
+       'common-lisp-indent-function)
+  (nates-general-lisp-mode))
+
+(defun nates-inferior-lisp-mode ()
+  (define-key slime-repl-mode-map
+    (read-kbd-macro paredit-backward-delete-key) nil)
+  (local-set-key (kbd "C-M-S-s-r")
+                 (lambda ()
+                   (interactive)
+                   (shell-command "osascript ~/Dropbox/AppleScript/refresh-preview.scpt")))
+  (nates-general-lisp-mode))
+
+
+(defun nates-emacs-lisp-mode ()
+  (eldoc-mode t)
+  (nates-general-lisp-mode))
 
 (add-hook 'lisp-mode-hook 'nates-lisp-mode)
-(add-hook 'emacs-lisp-hook 'nates-lisp-mode)
-(add-hook 'inferior-lisp-mode-hook (lambda () (inferior-slime-mode t) (auto-complete-mode t)))
 
-
-(setq global-auto-complete-mode t)
+(add-hook 'emacs-lisp-mode-hook 'nates-emacs-lisp-mode)
+(add-hook 'slime-repl-mode-hook 'nates-inferior-lisp-mode)
+(add-hook 'slime-mode-hook
+          (lambda ()
+            (unless (slime-connected-p)
+              (print (current-buffer))
+              (unless (equalp (current-buffer) (get-buffer "*scratch*"))
+                (save-excursion (slime))))))
 
 (add-to-list 'auto-mode-alist '("\\.j\\'" . lisp-mode))
-(add-to-list 'auto-mode-alist '("\\.h\\'" . c++-mode))
 
+(eval-after-load 'slime
+  `(define-key slime-mode-map (kbd "M-?") nil))
 
-
-
-;; -- common-lisp compatibility if not added earlier in your .emacs
 (require 'cl)
+
+;;;;;;;;;;;
+;; OCAML ;;
+;;;;;;;;;;;
 
 ;; -- Tuareg mode -----------------------------------------
 ;; Add Tuareg to your search path
@@ -199,8 +284,9 @@
 ;; Setup environment variables using opam
 (dolist
    (var (car (read-from-string
-           (shell-command-to-string "opam config env --sexp"))))
- (setenv (car var) (cadr var)))
+              (shell-command-to-string "opam config env --sexp"))))
+  (setenv (car var) (cadr var)))
+
 ;; Update the emacs path
 (setq exec-path (split-string (getenv "PATH") path-separator))
 ;; Update the emacs load path
@@ -225,33 +311,156 @@
 (load-file "/Users/Nate/.opam/system/share/emacs/site-lisp/ocp-indent.el")
 
 
-;;Org mode and capture
+;;;;;;;;;;;;
+;; MATLAB ;;
+;;;;;;;;;;;;
+
+(add-to-list 'load-path "~/.emacs.d/matlab-emacs")
+         (load-library "matlab-load")
+(custom-set-variables
+ '(matlab-shell-command-switches '("-nodesktop -nosplash")))
+(add-hook 'matlab-mode-hook 'auto-complete-mode)
+(add-hook 'matlab-mode-hook 'mlint-minor-mode)
+(setq auto-mode-alist
+    (cons
+     '("\\.m$" . matlab-mode)
+     auto-mode-alist))
+
+
+;;;;;;;;;;;
+;; LATEX ;;
+;;;;;;;;;;;
+(setq TeX-auto-save t)
+(setq TeX-parse-self t)
+;(setq-default TeX-master nil)
+(add-hook 'LaTeX-mode-hook 'visual-line-mode)
+(add-hook 'LaTeX-mode-hook 'flyspell-mode)
+(add-hook 'LaTeX-mode-hook 'LaTeX-math-mode)
+(add-hook 'LaTeX-mode-hook 'turn-on-reftex)
+(add-hook 'LaTeX-mode-hook (lambda () (auto-fill-mode -1)))
+(setq reftex-plug-into-AUCTeX t)
+(setq TeX-PDF-mode t)
+(setq LaTeX-command-style '(("" "%(PDF)%(latex) -file-line-error %S%(PDFout)"))) 
+
+;; Use Skim as viewer, enable source <-> PDF sync
+;; make latexmk available via C-c C-c
+;; Note: SyncTeX is setup via ~/.latexmkrc (see below)
+(add-hook 'LaTeX-mode-hook (lambda ()
+			     (push
+			      '("latexmk" "latexmk -pdf %s" TeX-run-TeX nil t
+				:help "Run latexmk on file")
+			      TeX-command-list)))
+(add-hook 'TeX-mode-hook '(lambda () (setq TeX-command-default "latexmk")))
+
+;; use Skim as default pdf viewer
+;; Skim's displayline is used for forward search (from .tex to .pdf)
+;; option -b highlights the current line; option -g opens Skim in the background
+
+
+(setq TeX-view-program-selection '((output-pdf "PDF Viewer")))
+(setq TeX-view-program-list
+      '(("PDF Viewer"
+         "/Applications/Skim.app/Contents/SharedSupport/displayline -b -g %n %o %b")))
+
+
+;;Stop autocompleting when I hit enter
+;(add-hook 'css-mode-hook
+;          (lambda ()
+;            (define-key ac-complete-mode-map "\r" nil)))
+
+;;Set indentation rules
+(customize-set-variable
+ 'LaTeX-indent-environment-list
+ '(("verbatim" current-indentation)
+   ("verbatim*" current-indentation)
+   ("tabu" LaTeX-indent-tabular)
+   ("tabular" LaTeX-indent-tabular)
+   ("tabular*" LaTeX-indent-tabular)
+   ("align" LaTeX-indent-tabular)
+   ("align*" LaTeX-indent-tabular)
+   ("array" LaTeX-indent-tabular)
+   ("eqnarray" LaTeX-indent-tabular)
+   ("eqnarray*" LaTeX-indent-tabular)
+   ("displaymath")
+   ("equation")
+   ("equation*")
+   ("picture")
+   ("tabbing")
+   ("table")
+   ("table*")))
+;;;;;;;;;;;;;;
+;; FLYSPELL ;;
+;;;;;;;;;;;;;;
+
+(add-hook 'flyspell-mode-hook (lambda ()
+                                (define-key flyspell-mode-map (kbd "M-<f1>")
+                                  #'flyspell-check-previous-highlighted-word)))
+
+
+;;;;;;;;;;;;;;
+;; ORG MODE ;;
+;;;;;;;;;;;;;;
+
 (require 'org)
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(LaTeX-indent-environment-list
+   (quote
+    (("verbatim" current-indentation)
+     ("verbatim*" current-indentation)
+     ("tabu" LaTeX-indent-tabular)
+     ("tabular" LaTeX-indent-tabular)
+     ("tabular*" LaTeX-indent-tabular)
+     ("align" LaTeX-indent-tabular)
+     ("align*" LaTeX-indent-tabular)
+     ("array" LaTeX-indent-tabular)
+     ("eqnarray" LaTeX-indent-tabular)
+     ("eqnarray*" LaTeX-indent-tabular)
+     ("displaymath")
+     ("equation")
+     ("equation*")
+     ("picture")
+     ("tabbing")
+     ("table")
+     ("table*"))) t)
  '(compilation-auto-jump-to-first-error t)
  '(compilation-message-face (quote default))
  '(custom-enabled-themes (quote (zenburn)))
- '(custom-safe-themes (quote ("3dafeadb813a33031848dfebfa0928e37e7a3c18efefa10f3e9f48d1993598d3" "05c3bc4eb1219953a4f182e10de1f7466d28987f48d647c01f1f0037ff35ab9a" default)))
+ '(custom-safe-themes
+   (quote
+    ("3dafeadb813a33031848dfebfa0928e37e7a3c18efefa10f3e9f48d1993598d3" "05c3bc4eb1219953a4f182e10de1f7466d28987f48d647c01f1f0037ff35ab9a" default)))
  '(highlight-changes-colors ("#FD5FF0" "#AE81FF"))
- '(highlight-tail-colors (quote (("#49483E" . 0) ("#67930F" . 20) ("#349B8D" . 30) ("#21889B" . 50) ("#968B26" . 60) ("#A45E0A" . 70) ("#A41F99" . 85) ("#49483E" . 100))))
+ '(highlight-tail-colors
+   (quote
+    (("#49483E" . 0)
+     ("#67930F" . 20)
+     ("#349B8D" . 30)
+     ("#21889B" . 50)
+     ("#968B26" . 60)
+     ("#A45E0A" . 70)
+     ("#A41F99" . 85)
+     ("#49483E" . 100))))
+ '(hl-paren-colors
+   (quote
+    ("PaleGreen1" "SpringGreen1" "SpringGreen3" "SpringGreen4")))
  '(ido-enable-flex-matching t)
  '(ido-mode (quote both) nil (ido))
  '(indent-tabs-mode nil)
  '(magit-diff-use-overlays nil)
- '(org-agenda-files (quote ("~/Dropbox/org/agenda/notes.org" "~/Dropbox/org/agenda/tasks.org" "~/Dropbox/org/agenda/work.org" "~/Dropbox/org/agenda/school-work.org")))
+ '(mlint-programs
+   (quote
+    ("mlint" "mac/mlint" "/Applications/MATLAB_R2014a.app/bin/maci64/mlint")))
+ '(org-agenda-files
+   (quote
+    ("~/Dropbox/org/agenda/notes.org" "~/Dropbox/org/agenda/tasks.org" "~/Dropbox/org/agenda/work.org" "~/Dropbox/org/agenda/school-work.org")))
  '(org-mobile-inbox-for-pull "~/Dropbox/org/from-mobile.org")
  '(reb-re-syntax (quote string))
- '(weechat-color-list (unspecified "#272822" "#49483E" "#A20C41" "#F92672" "#67930F" "#A6E22E" "#968B26" "#E6DB74" "#21889B" "#66D9EF" "#A41F99" "#FD5FF0" "#349B8D" "#A1EFE4" "#F8F8F2" "#F8F8F0")))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
+ '(weechat-color-list
+   (unspecified "#272822" "#49483E" "#A20C41" "#F92672" "#67930F" "#A6E22E" "#968B26" "#E6DB74" "#21889B" "#66D9EF" "#A41F99" "#FD5FF0" "#349B8D" "#A1EFE4" "#F8F8F2" "#F8F8F0")))
+
 (setq org-directory "~/Dropbox/org")
 (setq org-default-notes-file "~/Dropbox/org/agenda/notes.org")
 (define-key global-map "\C-cr" 'org-capture)
@@ -321,68 +530,11 @@
       '(("w" tags-todo "WORK")
 	("h" tags-todo "HOME")))
 
-;; Close the compilation window when compilation succedes
-(setq 
- compilation-exit-message-function
- (lambda (status code msg)
-   ;; If M-x compile exists with a 0
-   (when (and (eq status 'exit) (zerop code))
-     ;; then bury the *compilation* buffer, so that C-x b doesn't go there
-     ;;(switch-to-prev-buffer (get-buffer-window "*compilation*") 'kill)
-     (bury-buffer)
-     ;; and delete the *compilation* window
-
-     (delete-window (get-buffer-window (get-buffer "*compilation*"))))
-   ;; Always return the anticipated result of compilation-exit-message-function
-   (cons msg code)))
 
 
 
 
-(defun push-mark-no-activate ()
-  "Pushes `point' to `mark-ring' and does not activate the region
-   Equivalent to \\[set-mark-command] when \\[transient-mark-mode] is disabled"
-  (interactive)
-  (push-mark (point) t nil)
-  (message "Pushed mark to ring"))
-
-(global-set-key (kbd "C-`") 'push-mark-no-activate)
-
-(defun jump-to-mark ()
-  "Jumps to the local mark, respecting the `mark-ring' order.
-  This is the same as using \\[set-mark-command] with the prefix argument."
-  (interactive)
-  (set-mark-command 1))
-(global-set-key (kbd "M-`") 'jump-to-mark)
-
-
-(require 'visible-mark)
-(defface mark-1
-  '((((type tty) (class mono))
-     (:inverse-video t))
-    (t (:background "turquoise2"))) "")
-(defface mark-2
-  '((((type tty) (class mono)))
-    (t (:background "turquoise3"))) "")
-(defface mark-3
-  '((((type tty) (class mono)))
-    (t (:background "turquoise4"))) "")
-(setq visible-mark-faces (quote (mark-1 mark-2 mark-3)))
-(setq visible-mark-max 3)
-(global-visible-mark-mode)
-
-(global-set-key (kbd "M-i") 'helm-imenu)
-(require 'helm-config)
-
-(defadvice yes-or-no-p (around prevent-dialog activate)
-  "Prevent yes-or-no-p from activating a dialog"
-  (let ((use-dialog-box nil))
-    ad-do-it))
-(defadvice y-or-n-p (around prevent-dialog-yorn activate)
-  "Prevent y-or-n-p from activating a dialog"
-  (let ((use-dialog-box nil))
-    ad-do-it))
-
+;;;AFTER PACKAGE INITIALIZATION 
 (package-initialize)
 ;make path variables the same in emacs and the shell
 (when (memq window-system '(mac ns))
@@ -392,3 +544,11 @@
        (shell-command-to-string "opam config var share 2> /dev/null") 0 -1))
 (add-to-list 'load-path (concat opam-share "/emacs/site-lisp"))
 (require 'merlin)
+
+
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
