@@ -5,11 +5,11 @@ export PATH=$PATH:/Applications/MATLAB_R2015b.app/bin/
 alias start-emacs-server="/Applications/Emacs.app/Contents/MacOS/Emacs --daemon"
 alias ls='ls -GFh'
 alias ll='ls -l'
-alias emacs="/Applications/Emacs.app/Contents/MacOS/bin/emacsclient -c -a \"\""
+alias eclient="/Applications/Emacs.app/Contents/MacOS/bin/emacsclient -c -a \"\""
 alias sshpclassic="ssh pclassic@pclassic.org"
 alias ssheniac="ssh nchodosh@eniac.seas.upenn.edu"
 alias ssh-seedbox="ssh qazmonk@burrito.whatbox.ca"
-alias e="emacs"
+alias e="eclient"
 alias kill-emacs-server="e -e \"(kill-emacs)\""
 alias calc="~/dotfiles/cmds/calc.sh"
 set -o emacs

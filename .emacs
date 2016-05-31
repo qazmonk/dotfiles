@@ -5,8 +5,8 @@
 ;; GENERAL STUFF ;;
 ;;;;;;;;;;;;;;;;;;;
 
-(tool-bar-mode 0)
-(setq debug-on-error nil)
+(setq debug-on-error t)
+
 
 ;;This isn't working for El Capitan so uncomment it when it gets fixed
 ;;(setq visible-bell t)
@@ -50,7 +50,6 @@
    [default bold shadow italic underline bold bold-italic bold])
  '(ansi-color-names-vector
    (vector "#eaeaea" "#d54e53" "#b9ca4a" "#e7c547" "#7aa6da" "#c397d8" "#70c0b1" "#000000"))
-
  '(beacon-mode t)
  '(company-backends
    (quote
@@ -89,7 +88,7 @@
  '(matlab-shell-command-switches (quote ("-nodesktop -nosplash")))
  '(mlint-programs
    (quote
-    ("mlint" "mac/mlint" "/Applications/MATLAB_R2015b.app/bin/maci64/mlint")))
+    ("/Applications/MATLAB_R2015b.app/bin/maci64/mlint")))
  '(nrepl-message-colors
    (quote
     ("#CC9393" "#DFAF8F" "#F0DFAF" "#7F9F7F" "#BFEBBF" "#93E0E3" "#94BFF3" "#DC8CC3")))
@@ -131,8 +130,13 @@
  '(weechat-color-list
    (unspecified "#272822" "#49483E" "#A20C41" "#F92672" "#67930F" "#A6E22E" "#968B26" "#E6DB74" "#21889B" "#66D9EF" "#A41F99" "#FD5FF0" "#349B8D" "#A1EFE4" "#F8F8F2" "#F8F8F0")))
 
-(setf beacon-color (face-background 'cursor))
 
+
+
+(setq ring-bell-function 
+      (lambda ()
+        (message "blink!")
+        (beacon-blink)))
 ;;Company mode
 ;(company-quickhelp-mode t)
 (defun indent-or-complete ()
@@ -155,9 +159,9 @@
 
 (add-hook 'after-init-hook 'global-company-mode)
 ;;dunno if this actually works (I don't think it does)
-(require 'server)
-(if (not (server-running-p))
-    (server-start))
+;(require 'server)
+;; (if (not (server-running-p))
+;;     (server-start))
 
 (windmove-default-keybindings 'super)
 (menu-bar-mode -1)
@@ -314,7 +318,7 @@
 ;; LISP ;;
 ;;;;;;;;;;
 
-(setq inferior-lisp-program "/usr/local/bin/sbcl")
+;(setq inferior-lisp-program "/usr/local/bin/sbcl")
 ;(setq inferior)
 (add-to-list 'load-path "~/.emacs.d/slime-2.8")
 (require 'slime-autoloads)
@@ -349,8 +353,7 @@
   (define-key company-active-map (kbd "\C-n") 'company-select-next)
   (define-key company-active-map (kbd "\C-p") 'company-select-previous)
   (define-key company-active-map (kbd "\C-d") 'company-show-doc-buffer)
-  (define-key company-active-map (kbd "M-.") 'company-show-location)
-  )
+  (define-key company-active-map (kbd "M-.") 'company-show-location))
 (defun nates-lisp-mode ()
   (slime-mode)
   (local-set-key (kbd "C-M-S-s-r")
@@ -454,7 +457,6 @@
 (add-to-list 'load-path "~/.emacs.d/matlab-emacs")
          (load-library "matlab-load")
 
-(add-hook 'matlab-mode-hook 'auto-complete-mode)
 (add-hook 'matlab-mode-hook 'mlint-minor-mode)
 (setq auto-mode-alist
     (cons
@@ -570,49 +572,6 @@
 	 "* %^{prompt|No Title}\nEntered on %U\n%? %i\n")))
 (setq org-mobile-directory "~/Dropbox/MobileOrg")
 (setq org-mobile-files '("~/Dropbox/org/agenda/notes.org" "~/Dropbox/org/agenda/tasks.org" "~/Dropbox/org/agenda/work.org"))
-(defvar org-mobile-push-timer nil
-  "Timer that `org-mobile-push-timer' used to reschedule itself, or nil.")
-
-(defun org-mobile-push-with-delay (secs)
-  (when org-mobile-push-timer
-    (cancel-timer org-mobile-push-timer))
-  (setq org-mobile-push-timer
-        (run-with-idle-timer
-         (* 1 secs) nil 'org-mobile-push)))
-
-(add-hook 'after-save-hook 
- (lambda () 
-   (when (eq major-mode 'org-mode)
-     (dolist (file (org-mobile-files-alist))
-      (if (string= (file-truename (expand-file-name (car file)))
-		   (file-truename (buffer-file-name)))
-           (org-mobile-push-with-delay 30)))
-   )))
-;; refreshes agenda file each day
-(run-at-time "00:05" 86400 '(lambda () (org-mobile-push-with-delay 1)))
-(org-mobile-pull) ;; run org-mobile-pull at startup
-
-(defun install-monitor (file secs)
-  (run-with-timer
-   0 secs
-   (lambda (f p)
-     (unless (< p (second (time-since (elt (file-attributes f) 5))))
-       (org-mobile-pull)))
-   file secs))
-
-(install-monitor (file-truename
-                  (concat
-                   (file-name-as-directory org-mobile-directory)
-                          org-mobile-capture-file))
-                 5)
-
-;; Do a pull every 5 minutes to circumvent problems with timestamping
-;; (ie. dropbox bugs)
-(run-with-timer 0 (* 5 60) 'org-mobile-pull)
-(setq org-agenda-custom-commands
-      '(("w" tags-todo "WORK")
-	("h" tags-todo "HOME")))
-
 
 (add-hook 'org-mode-hook (lambda () (visual-line-mode t)))
 
@@ -637,3 +596,21 @@
  '(mark-1 ((t (:background "MediumPurple1"))))
  '(mark-2 ((t (:background "MediumPurple3"))))
  '(mark-3 ((t (:background "MediumPurple4")))))
+
+;;;;;;;;;;;;;;;;;
+;; CLIENT CODE ;;
+;;;;;;;;;;;;;;;;;
+
+(defun emacsclient-setup-function (frame)
+  (select-frame frame)
+  (when (display-graphic-p) 
+    (when tool-bar-mode
+      (message "turning off the toolbar")
+      (tool-bar-mode -1))
+    (message (format "%s" (face-background 'cursor)))    
+    (setf beacon-color (face-background 'cursor))))
+
+
+(when (daemonp)
+  (message "adding after-make-frame-functions hook")
+  (add-hook 'after-make-frame-functions 'emacsclient-setup-function))
