@@ -104,6 +104,7 @@
  '(slime-company-major-modes
    (quote
     (lisp-mode clojure-mode slime-repl-mode scheme-mode emacs-lisp-mode)))
+ '(slime-use-autodoc-mode nil)
  '(vc-annotate-background nil)
  '(vc-annotate-color-map
    (quote
@@ -319,7 +320,7 @@
 ;;;;;;;;;;
 
 ;(setq inferior-lisp-program "/usr/local/bin/sbcl")
-;(setq inferior)
+(setq inferior-lisp-program "/usr/local/bin/ccl64")
 (add-to-list 'load-path "~/.emacs.d/slime-2.8")
 (require 'slime-autoloads)
 
@@ -362,11 +363,14 @@
                    (shell-command "osascript ~/Dropbox/AppleScript/refresh-preview.scpt")))
   (set (make-local-variable 'lisp-indent-function)
        'common-lisp-indent-function)
-  (nates-general-lisp-mode))
+  (nates-general-lisp-mode)
+  (eldoc-mode -1))
 
 (defun nates-inferior-lisp-mode ()
   (define-key slime-repl-mode-map
     (read-kbd-macro paredit-backward-delete-key) nil)
+  (eldoc-mode t)
+  (message "turning on eldoc-mode")
   (local-set-key (kbd "C-M-S-s-r")
                  (lambda ()
                    (interactive)
@@ -382,12 +386,17 @@
 
 (add-hook 'emacs-lisp-mode-hook 'nates-emacs-lisp-mode)
 (add-hook 'slime-repl-mode-hook 'nates-inferior-lisp-mode)
-(add-hook 'slime-mode-hook
-          (lambda ()
-            (unless (slime-connected-p)
-              (print (current-buffer))
-              (unless (equalp (current-buffer) (get-buffer "*scratch*"))
-                (save-excursion (slime))))))
+(defun nates-slime ()
+  (interactive)
+  (save-excursion
+    (slime))
+  (eldoc-mode t))
+;; (add-hook 'slime-mode-hook
+;;           (lambda ()
+;;             (unless (slime-connected-p)
+;;               (print (current-buffer))
+;;               (unless (equalp (current-buffer) (get-buffer "*scratch*"))
+;;                 (save-excursion (slime))))))
 
 (add-to-list 'auto-mode-alist '("\\.j\\'" . lisp-mode))
 
@@ -453,6 +462,12 @@
 ;;;;;;;;;;;;
 ;; MATLAB ;;
 ;;;;;;;;;;;;
+
+(defun matlab-set-breakpoint ()
+  (interactive)
+  (matlab-shell-run-command (format "dbstop in %s at %d" 
+                                    (file-name-nondirectory (buffer-file-name))
+                                    (line-number-at-pos))))
 
 (add-to-list 'load-path "~/.emacs.d/matlab-emacs")
          (load-library "matlab-load")
