@@ -5,8 +5,8 @@
 ;; GENERAL STUFF ;;
 ;;;;;;;;;;;;;;;;;;;
 
-(setq debug-on-error t)
-
+(setq debug-on-error nil)
+(setq-default fill-column 80)
 
 ;;This isn't working for El Capitan so uncomment it when it gets fixed
 ;;(setq visible-bell t)
@@ -22,6 +22,7 @@
 	("melpa" . "http://melpa.milkbox.net/packages/")))
 
 
+(set-default 'truncate-lines t)
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -51,11 +52,21 @@
  '(ansi-color-names-vector
    (vector "#eaeaea" "#d54e53" "#b9ca4a" "#e7c547" "#7aa6da" "#c397d8" "#70c0b1" "#000000"))
  '(beacon-mode t)
+ '(c-default-style
+   (quote
+    ((c++-mode . "k&r")
+     (java-mode . "java")
+     (awk-mode . "awk")
+     (other . "gnu"))))
+ '(c-offsets-alist (quote ((statement-cont first c-lineup-assignments +))))
  '(company-backends
    (quote
-    (company-tern company-bbdb company-nxml company-css company-semantic company-clang company-xcode company-cmake company-capf company-files
-                  (company-dabbrev-code company-gtags company-etags company-keywords)
-                  company-oddmuse company-dabbrev company-elisp company-tern)))
+    (company-dabbrev-code company-files company-slime company-elisp company-nxml company-css company-semantic company-clang company-xcode company-cmake company-capf
+                          (company-dabbrev-code company-gtags company-etags company-keywords)
+                          company-oddmuse company-tern)))
+ '(company-dabbrev-code-modes
+   (quote
+    (prog-mode batch-file-mode csharp-mode css-mode erlang-mode haskell-mode jde-mode lua-mode python-mode matlab-mode matlab-shell-mode)))
  '(company-idle-delay 0.1)
  '(compilation-auto-jump-to-first-error t)
  '(compilation-message-face (quote default))
@@ -105,6 +116,7 @@
    (quote
     (lisp-mode clojure-mode slime-repl-mode scheme-mode emacs-lisp-mode)))
  '(slime-use-autodoc-mode nil)
+ '(term-buffer-maximum-size 0)
  '(vc-annotate-background nil)
  '(vc-annotate-color-map
    (quote
@@ -136,8 +148,7 @@
 
 (setq ring-bell-function 
       (lambda ()
-        (message "blink!")
-        (beacon-blink)))
+        (when (display-graphic-p) (beacon-blink))))
 ;;Company mode
 ;(company-quickhelp-mode t)
 (defun indent-or-complete ()
@@ -152,13 +163,14 @@
 (smex-initialize) ; Can be omitted. This might cause a (minimal) delay
                   ; when Smex is auto-initialized on its first run.
 
-
+(global-set-key (kbd "C-c SPC") 'ace-jump-mode)
 (global-set-key (kbd "M-x") 'smex)
 (global-set-key (kbd "M-X") 'smex-major-mode-commands)
 ;; This is your old M-x.
 (global-set-key (kbd "C-c C-c M-x") 'execute-extended-command)
 
 (add-hook 'after-init-hook 'global-company-mode)
+(global-set-key (kbd "C-M-s-<tab>") 'company-other-backend)
 ;;dunno if this actually works (I don't think it does)
 ;(require 'server)
 ;; (if (not (server-running-p))
@@ -190,14 +202,6 @@
 ;;GET THOSE GOD DAMN TABS OUT OF HERE
 (setq-default indent-tabes-mode nil)
 
-
-(defun my-merge-imenu ()
-  (interactive)
-  (let ((mode-imenu (imenu-default-create-index-function))
-        (custom-imenu (imenu--generic-function imenu-generic-expression)))
-;;    (delete-dups (append mode-imenu custom-imenu))))
-    custom-imenu))
-
 (add-hook 'text-mode-hook (lambda () 
                             (flyspell-mode)
                             (auto-fill-mode)))
@@ -218,7 +222,24 @@
   (set-mark-command 1))
 (global-set-key (kbd "M-`") 'jump-to-mark)
 
+;;;;;;;;;;
+;; HELM ;;
+;;;;;;;;;;
 
+
+(global-set-key (kbd "M-i") 'helm-imenu)
+(require 'helm-config)
+(helm-mode 1)
+
+(define-key helm-map (kbd "<tab>") 'helm-execute-persistent-action) ; rebind tab to do persistent action
+(define-key helm-map (kbd "C-i") 'helm-execute-persistent-action) ; make TAB works in terminal
+(define-key helm-map (kbd "C-z")  'helm-select-action) ; list actions using C-z
+
+(global-set-key (kbd "C-x C-b") 'helm-mini)
+(global-set-key (kbd "C-x C-f") 'helm-find-files)
+;;;;;;;;;;;;;;;;;;;;
+;; VISUAL EFFECTS ;;
+;;;;;;;;;;;;;;;;;;;
 (require 'visible-mark)
 (defface mark-1
   '((((type tty) (class mono))
@@ -234,8 +255,7 @@
 (setq visible-mark-max 3)
 (global-visible-mark-mode)
 
-(global-set-key (kbd "M-i") 'helm-imenu)
-(require 'helm-config)
+
 
 (defadvice yes-or-no-p (around prevent-dialog activate)
   "Prevent yes-or-no-p from activating a dialog"
@@ -278,10 +298,23 @@
    (cons msg code)))
 
 
+;;;;;;;;;;;
+;; CMAKE ;;
+;;;;;;;;;;;
+
+(add-to-list 'load-path "~/.emacs.d/cmake-mode/")
+(require 'cmake-mode)
 
 ;;;;;;;;;
 ;; C++ ;;
 ;;;;;;;;;
+
+(defun my-merge-imenu ()
+  (interactive)
+  (let ((mode-imenu (imenu-default-create-index-function))
+        (custom-imenu (imenu--generic-function imenu-generic-expression)))
+;;    (delete-dups (append mode-imenu custom-imenu))))
+    custom-imenu))
 (defun my-c++-mode-hook ()
   (add-to-list
    'imenu-generic-expression
@@ -302,7 +335,7 @@
  (setq c-indent-level 2)                  ;; Default is 2
 
  (setq tab-stop-list '(4 8 12 16 20 24 28 32 36 40 44 48 52 56 60))
- (setq tab-width 4)
+ (setq tab-width 2)
  (setq indent-tabs-mode nil)
  (setq column-number-mode t)
  (setq compile-command "make all")
@@ -469,10 +502,23 @@
                                     (file-name-nondirectory (buffer-file-name))
                                     (line-number-at-pos))))
 
+(defun matlab-set-condition-breakpoint (condition)
+  (interactive "sEnter condition: ")
+  (message (format "dbstop in %s at %d if (%s)" 
+                                    (file-name-nondirectory (buffer-file-name))
+                                    (line-number-at-pos)
+                                    condition))  (matlab-shell-run-command (format "dbstop in %s at %d if (%s)" 
+                                    (file-name-nondirectory (buffer-file-name))
+                                    (line-number-at-pos)
+                                    condition)))
+
+(defun nates-matlab-mode ()
+  (mlint-minor-mode t)
+  (matlab-toggle-show-mlint-warnings))
 (add-to-list 'load-path "~/.emacs.d/matlab-emacs")
          (load-library "matlab-load")
 
-(add-hook 'matlab-mode-hook 'mlint-minor-mode)
+(add-hook 'matlab-mode-hook 'nates-matlab-mode)
 (setq auto-mode-alist
     (cons
      '("\\.m$" . matlab-mode)
@@ -588,7 +634,11 @@
 (setq org-mobile-directory "~/Dropbox/MobileOrg")
 (setq org-mobile-files '("~/Dropbox/org/agenda/notes.org" "~/Dropbox/org/agenda/tasks.org" "~/Dropbox/org/agenda/work.org"))
 
-(add-hook 'org-mode-hook (lambda () (visual-line-mode t)))
+(defun nates-org-mode-hook ()
+  (visual-line-mode t)
+  (local-set-key (kbd "C-M-<left>") 'org-promote-subtree)
+  (local-set-key (kbd "C-M-<right>") 'org-demote-subtree))
+(add-hook 'org-mode-hook 'nates-org-mode-hook)
 
 
 ;;;AFTER PACKAGE INITIALIZATION 
@@ -629,3 +679,4 @@
 (when (daemonp)
   (message "adding after-make-frame-functions hook")
   (add-hook 'after-make-frame-functions 'emacsclient-setup-function))
+

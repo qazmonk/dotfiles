@@ -1,7 +1,8 @@
 export BASH_CONF="bashrc"
 
+export PATH=/usr/local/bin:$PATH
 export PATH=$PATH:/Applications/TeX/TeXShop.app/Contents/Resources/TeXShop/bin/tslatexmk
-export PATH=$PATH:/Applications/MATLAB_R2015b.app/bin/
+export PATH=$PATH:/Applications/MATLAB_R2015b.app/bin
 alias start-emacs-server="/Applications/Emacs.app/Contents/MacOS/Emacs --daemon"
 alias ls='ls -GFh'
 alias ll='ls -l'
@@ -42,7 +43,7 @@ function prompt {
     local WHITEBOLD="\[\033[1;37m\]"
     local RESETCOLOR="\[\e[00m\]"
 
-    export PS1="\n$RED\u $PURPLE@ $GREEN\w $RESETCOLOR$GREENBOLD\$(git branch 2> /dev/null)\n $BLUE[\#] → $RESETCOLOR"
+    export PS1="\n$RED\u $PURPLE@ $GREEN\w $RESETCOLOR$GREENBOLD\n\$(git branch 2> /dev/null)\n $BLUE[\#] → $RESETCOLOR"
     export PS2=" | → $RESETCOLOR"
 }
 
