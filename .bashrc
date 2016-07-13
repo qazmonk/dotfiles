@@ -1,5 +1,6 @@
 export BASH_CONF="bashrc"
 
+export EDITOR=emacsclient
 export PATH=/usr/local/bin:$PATH
 export PATH=$PATH:/Applications/TeX/TeXShop.app/Contents/Resources/TeXShop/bin/tslatexmk
 export PATH=$PATH:/Applications/MATLAB_R2015b.app/bin

@@ -51,7 +51,6 @@
    [default bold shadow italic underline bold bold-italic bold])
  '(ansi-color-names-vector
    (vector "#eaeaea" "#d54e53" "#b9ca4a" "#e7c547" "#7aa6da" "#c397d8" "#70c0b1" "#000000"))
- '(beacon-mode t)
  '(c-default-style
    (quote
     ((c++-mode . "k&r")
@@ -59,14 +58,10 @@
      (awk-mode . "awk")
      (other . "gnu"))))
  '(c-offsets-alist (quote ((statement-cont first c-lineup-assignments +))))
- '(company-backends
-   (quote
-    (company-dabbrev-code company-files company-slime company-elisp company-nxml company-css company-semantic company-clang company-xcode company-cmake company-capf
-                          (company-dabbrev-code company-gtags company-etags company-keywords)
-                          company-oddmuse company-tern)))
  '(company-dabbrev-code-modes
    (quote
     (prog-mode batch-file-mode csharp-mode css-mode erlang-mode haskell-mode jde-mode lua-mode python-mode matlab-mode matlab-shell-mode)))
+ '(company-dabbrev-downcase nil)
  '(company-idle-delay 0.1)
  '(compilation-auto-jump-to-first-error t)
  '(compilation-message-face (quote default))
@@ -146,9 +141,7 @@
 
 
 
-(setq ring-bell-function 
-      (lambda ()
-        (when (display-graphic-p) (beacon-blink))))
+
 ;;Company mode
 ;(company-quickhelp-mode t)
 (defun indent-or-complete ()
@@ -222,6 +215,12 @@
   (set-mark-command 1))
 (global-set-key (kbd "M-`") 'jump-to-mark)
 
+;;COMPANY MODE
+(setq company-backends
+      '((company-files
+         company-keywords
+         company-capf)
+        (company-abbrev company-dabbrev)))
 ;;;;;;;;;;
 ;; HELM ;;
 ;;;;;;;;;;
@@ -270,6 +269,11 @@
     "Toggle `visual-line-mode' and `adaptive-wrap-prefix-mode' simultaneously."
     (adaptive-wrap-prefix-mode (if visual-line-mode 1 -1)))
 (add-hook 'visual-line-mode-hook 'my-activate-adaptive-wrap-prefix-mode)
+;;;;;;;;;;;
+;; SHELL ;;
+;;;;;;;;;;;
+
+
 ;;;;;;;;;;;;;;;;;
 ;; PROGRAMMING ;;
 ;;;;;;;;;;;;;;;;;
@@ -413,6 +417,7 @@
 
 (defun nates-emacs-lisp-mode ()
   (eldoc-mode t)
+  (add-to-list (make-local-variable 'company-backends) 'company-elisp)
   (nates-general-lisp-mode))
 
 (add-hook 'lisp-mode-hook 'nates-lisp-mode)
@@ -516,7 +521,7 @@
   (mlint-minor-mode t)
   (matlab-toggle-show-mlint-warnings))
 (add-to-list 'load-path "~/.emacs.d/matlab-emacs")
-         (load-library "matlab-load")
+(load-library "matlab-load")
 
 (add-hook 'matlab-mode-hook 'nates-matlab-mode)
 (setq auto-mode-alist
@@ -534,7 +539,10 @@
 ;; Javascript ::
 ;;;;;;;;;;;;;;;;
 
-(add-to-list 'company-backends 'company-tern)
+;; (add-hook js2-mode-hook 
+;;           (lambda ()
+;;             (tern-mode t)
+;;             (add-to-list (make-local-variable 'company-backends) 'company-tern)))
 (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
 
 
@@ -666,17 +674,20 @@
 ;; CLIENT CODE ;;
 ;;;;;;;;;;;;;;;;;
 
+;;When you run emacsclient this file isn't evaluated (that's the point).
+;;So this is just a little function to setup some graphical properties that 
+;;mess up the server when loading the init file
 (defun emacsclient-setup-function (frame)
   (select-frame frame)
+  (message "hi from after make frame functions")
   (when (display-graphic-p) 
     (when tool-bar-mode
       (message "turning off the toolbar")
       (tool-bar-mode -1))
     (message (format "%s" (face-background 'cursor)))    
-    (setf beacon-color (face-background 'cursor))))
+    (setf beacon-color (face-background 'cursor))
+    (setq ring-bell-function 
+          (lambda ()
+            (beacon-blink)))))
 
-
-(when (daemonp)
-  (message "adding after-make-frame-functions hook")
-  (add-hook 'after-make-frame-functions 'emacsclient-setup-function))
-
+(add-hook 'after-make-frame-functions 'emacsclient-setup-function)
