@@ -1,9 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; CUSTOM VARIABLES ;;
 ;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;
-;; GENERAL STUFF ;;
-;;;;;;;;;;;;;;;;;;;
 
 (setq debug-on-error nil)
 (setq-default fill-column 80)
@@ -50,7 +47,7 @@
  '(ansi-color-faces-vector
    [default bold shadow italic underline bold bold-italic bold])
  '(ansi-color-names-vector
-   (vector "#eaeaea" "#d54e53" "#b9ca4a" "#e7c547" "#7aa6da" "#c397d8" "#70c0b1" "#000000"))
+   ["gray100" "#d54e53" "light green" "light green" "#7aa6da" "#c397d8" "#70c0b1" "#000000"])
  '(c-default-style
    (quote
     ((c++-mode . "k&r")
@@ -68,7 +65,10 @@
  '(custom-enabled-themes (quote (sanityinc-tomorrow-night)))
  '(custom-safe-themes
    (quote
-    ("82d2cac368ccdec2fcc7573f24c3f79654b78bf133096f9b40c20d97ec1d8016" "1b8d67b43ff1723960eb5e0cba512a2c7a2ad544ddb2533a90101fd1852b426e" "bb08c73af94ee74453c90422485b29e5643b73b05e8de029a6909af6a3fb3f58" "06f0b439b62164c6f8f84fdda32b62fb50b6d00e8b01c2208e55543a6337433a" "628278136f88aa1a151bb2d6c8a86bf2b7631fbea5f0f76cba2a0079cd910f7d" "68d36308fc6e7395f7e6355f92c1dd9029c7a672cbecf8048e2933a053cf27e6" "3dafeadb813a33031848dfebfa0928e37e7a3c18efefa10f3e9f48d1993598d3" "05c3bc4eb1219953a4f182e10de1f7466d28987f48d647c01f1f0037ff35ab9a" default)))
+    ("8db4b03b9ae654d4a57804286eb3e332725c84d7cdab38463cb6b97d5762ad26" "1e3b2c9e7e84bb886739604eae91a9afbdfb2e269936ec5dd4a9d3b7a943af7f" "c4465c56ee0cac519dd6ab6249c7fd5bb2c7f7f78ba2875d28a50d3c20a59473" "82d2cac368ccdec2fcc7573f24c3f79654b78bf133096f9b40c20d97ec1d8016" "1b8d67b43ff1723960eb5e0cba512a2c7a2ad544ddb2533a90101fd1852b426e" "bb08c73af94ee74453c90422485b29e5643b73b05e8de029a6909af6a3fb3f58" "06f0b439b62164c6f8f84fdda32b62fb50b6d00e8b01c2208e55543a6337433a" "628278136f88aa1a151bb2d6c8a86bf2b7631fbea5f0f76cba2a0079cd910f7d" "68d36308fc6e7395f7e6355f92c1dd9029c7a672cbecf8048e2933a053cf27e6" "3dafeadb813a33031848dfebfa0928e37e7a3c18efefa10f3e9f48d1993598d3" "05c3bc4eb1219953a4f182e10de1f7466d28987f48d647c01f1f0037ff35ab9a" default)))
+ '(custom-theme-load-path
+   (quote
+    ("/Users/Nate/.emacs.d/elpa/color-theme-sanityinc-tomorrow-20160413.150/" "/Users/Nate/.emacs.d/elpa/monokai-theme-20160419.1444/" "/Users/Nate/.emacs.d/elpa/zenburn-theme-20160416.1011/" custom-theme-directory t "/Users/Nate/.emacs.d/emacs-color-theme-solarized")))
  '(fci-rule-color "#2a2a2a")
  '(glyphless-char-display-control (quote ((format-control . hex-code) (no-font . hex-code))))
  '(highlight-changes-colors ("#FD5FF0" "#AE81FF"))
@@ -95,6 +95,7 @@
  '(mlint-programs
    (quote
     ("/Applications/MATLAB_R2015b.app/bin/maci64/mlint")))
+ '(neo-theme (quote nerd))
  '(nrepl-message-colors
    (quote
     ("#CC9393" "#DFAF8F" "#F0DFAF" "#7F9F7F" "#BFEBBF" "#93E0E3" "#94BFF3" "#DC8CC3")))
@@ -106,6 +107,8 @@
  '(org-modules
    (quote
     (org-bbdb org-bibtex org-docview org-gnus org-info org-irc org-mhe org-rmail org-w3m org-drill)))
+ '(pos-tip-background-color "#A6E22E")
+ '(pos-tip-foreground-color "#272822")
  '(reb-re-syntax (quote string))
  '(slime-company-major-modes
    (quote
@@ -134,16 +137,16 @@
      (340 . "#e7c547")
      (360 . "#b9ca4a"))))
  '(vc-annotate-very-old-color nil)
+ '(vc-follow-symlinks t)
  '(web-mode-code-indent-offset 2)
  '(weechat-color-list
    (unspecified "#272822" "#49483E" "#A20C41" "#F92672" "#67930F" "#A6E22E" "#968B26" "#E6DB74" "#21889B" "#66D9EF" "#A41F99" "#FD5FF0" "#349B8D" "#A1EFE4" "#F8F8F2" "#F8F8F0")))
 
+;;;;;;;;;;;;;;;;;;;
+;; GENERAL STUFF ;;
+;;;;;;;;;;;;;;;;;;;
+(global-undo-tree-mode t)
 
-
-
-
-;;Company mode
-;(company-quickhelp-mode t)
 (defun indent-or-complete ()
     (interactive)
     (if (looking-at "\\_>")
@@ -218,9 +221,14 @@
 ;;COMPANY MODE
 (setq company-backends
       '((company-files
-         company-keywords
          company-capf)
-        (company-abbrev company-dabbrev)))
+        (company-keywords 
+         company-dabbrev-code)))
+
+;;NEOTREE
+(require 'neotree)
+(global-set-key [f8] 'neotree-toggle)
+
 ;;;;;;;;;;
 ;; HELM ;;
 ;;;;;;;;;;
@@ -308,6 +316,14 @@
 
 (add-to-list 'load-path "~/.emacs.d/cmake-mode/")
 (require 'cmake-mode)
+
+;;;;;;;;;
+;; GIT ;;
+;;;;;;;;;
+
+(defun nates-git-ignore-mode ()
+  (add-to-list (make-local-variable 'company-backends) 'company-add))
+(files-to-list 'auto-mode-alist '("\\.gitignore\\'" . nates-gitignore-mode))
 
 ;;;;;;;;;
 ;; C++ ;;
@@ -679,15 +695,22 @@
 ;;mess up the server when loading the init file
 (defun emacsclient-setup-function (frame)
   (select-frame frame)
-  (message "hi from after make frame functions")
-  (when (display-graphic-p) 
-    (when tool-bar-mode
-      (message "turning off the toolbar")
-      (tool-bar-mode -1))
-    (message (format "%s" (face-background 'cursor)))    
-    (setf beacon-color (face-background 'cursor))
-    (setq ring-bell-function 
-          (lambda ()
-            (beacon-blink)))))
+  (if (display-graphic-p) 
+      (progn
+        (dolist (theme custom-enabled-themes)
+          (disable-theme theme))
+        (load-theme 'sanityinc-tomorrow-night t)
+        (when tool-bar-mode
+          (message "turning off the toolbar")
+          (tool-bar-mode -1))
+        (message (format "%s" (face-background 'cursor)))    
+        (setf beacon-color (face-background 'cursor))
+        (setq ring-bell-function 
+              (lambda ()
+                (beacon-blink))))
+    (progn 
+      (dolist (theme custom-enabled-themes)
+        (disable-theme theme))      
+      (load-theme 'solarized t))))
 
 (add-hook 'after-make-frame-functions 'emacsclient-setup-function)
