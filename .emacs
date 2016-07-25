@@ -229,9 +229,9 @@
 (require 'neotree)
 (global-set-key [f8] 'neotree-toggle)
 
-;;;;;;;;;;
-;; HELM ;;
-;;;;;;;;;;
+;;;;;;;;;;;;;;
+;; HELM/IDO ;;
+;;;;;;;;;;;;;;
 
 
 (global-set-key (kbd "M-i") 'helm-imenu)
@@ -243,7 +243,7 @@
 (define-key helm-map (kbd "C-z")  'helm-select-action) ; list actions using C-z
 
 (global-set-key (kbd "C-x C-b") 'helm-mini)
-(global-set-key (kbd "C-x C-f") 'helm-find-files)
+(global-set-key (kbd "C-x C-f") 'ido-find-file)
 ;;;;;;;;;;;;;;;;;;;;
 ;; VISUAL EFFECTS ;;
 ;;;;;;;;;;;;;;;;;;;
@@ -322,8 +322,8 @@
 ;;;;;;;;;
 
 (defun nates-git-ignore-mode ()
-  (add-to-list (make-local-variable 'company-backends) 'company-add))
-(files-to-list 'auto-mode-alist '("\\.gitignore\\'" . nates-gitignore-mode))
+  (add-to-list (make-local-variable 'company-backends) 'company-files))
+(add-to-list 'auto-mode-alist '("\\.gitignore\\'" . nates-gitignore-mode))
 
 ;;;;;;;;;
 ;; C++ ;;
