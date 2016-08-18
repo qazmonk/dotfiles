@@ -536,10 +536,20 @@
 (defun nates-matlab-mode ()
   (mlint-minor-mode t)
   (matlab-toggle-show-mlint-warnings))
+
+(defun nates-matlab-shell-mode ()
+  (setq-local company-backends 
+              '((company-files
+                 company-capf)
+                company-matlab-shell
+                (company-keywords 
+                 company-dabbrev-code))))
+
 (add-to-list 'load-path "~/.emacs.d/matlab-emacs")
 (load-library "matlab-load")
 
 (add-hook 'matlab-mode-hook 'nates-matlab-mode)
+(add-hook 'matlab-shell-mode-hook 'nates-matlab-shell-mode)
 (setq auto-mode-alist
     (cons
      '("\\.m$" . matlab-mode)
