@@ -3,8 +3,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 
 (setq debug-on-error nil)
-(setq-default fill-column 80)
+(setq-default fill-column 90)
 
+(global-unset-key (kbd "C-z"))
 ;;This isn't working for El Capitan so uncomment it when it gets fixed
 ;;(setq visible-bell t)
 
@@ -91,6 +92,8 @@
  '(js-indent-level 2)
  '(js2-basic-offset 2)
  '(magit-diff-use-overlays nil)
+ '(magit-push-arguments nil)
+ '(matlab-functions-have-end t)
  '(matlab-shell-command-switches (quote ("-nodesktop -nosplash")))
  '(mlint-programs
    (quote
@@ -110,6 +113,7 @@
  '(pos-tip-background-color "#A6E22E")
  '(pos-tip-foreground-color "#272822")
  '(reb-re-syntax (quote string))
+ '(safe-local-variable-values (quote ((Package . CCL))))
  '(slime-company-major-modes
    (quote
     (lisp-mode clojure-mode slime-repl-mode scheme-mode emacs-lisp-mode)))
@@ -145,6 +149,20 @@
 ;;;;;;;;;;;;;;;;;;;
 ;; GENERAL STUFF ;;
 ;;;;;;;;;;;;;;;;;;;
+
+;; More help functions
+(require 'help-fns+)
+
+;;; Stefan Monnier <foo at acm.org>. It is the opposite of fill-paragraph    
+(defun unfill-paragraph (&optional region)
+  "Takes a multi-line paragraph and makes it into a single line of text."
+  (interactive (progn (barf-if-buffer-read-only) '(t)))
+  (let ((fill-column (point-max))
+        ;; This would override `fill-column' if it's an integer.
+        (emacs-lisp-docstring-fill-column t))
+    (fill-paragraph nil region)))
+(define-key global-map "\M-Q" 'unfill-paragraph)
+
 (global-undo-tree-mode t)
 
 (defun indent-or-complete ()
@@ -229,6 +247,10 @@
 (require 'neotree)
 (global-set-key [f8] 'neotree-toggle)
 
+;;MULTI-SCRATCH
+(add-to-list 'load-path "~/.emacs.d/multi-scratch/")
+(require 'multi-scratch)
+
 ;;;;;;;;;;;;;;
 ;; HELM/IDO ;;
 ;;;;;;;;;;;;;;
@@ -281,7 +303,10 @@
 ;; SHELL ;;
 ;;;;;;;;;;;
 
-
+(add-hook 'shell-mode-hook (lambda ()
+                             (setq-local company-backends 
+                                         '((company-files
+                                            company-dabbrev-code)))))
 ;;;;;;;;;;;;;;;;;
 ;; PROGRAMMING ;;
 ;;;;;;;;;;;;;;;;;
@@ -379,6 +404,7 @@
 
 (add-to-list 'slime-contribs 'inferior-slime)
 (add-to-list 'slime-contribs 'slime-fancy)
+(add-to-list 'slime-contribs 'slime-autodoc)
 
 (slime-setup '(slime-fancy slime-company))
 
@@ -417,7 +443,7 @@
   (set (make-local-variable 'lisp-indent-function)
        'common-lisp-indent-function)
   (nates-general-lisp-mode)
-  (eldoc-mode -1))
+  (slime-autodoc-mode))
 
 (defun nates-inferior-lisp-mode ()
   (define-key slime-repl-mode-map
@@ -547,7 +573,6 @@
 
 (add-to-list 'load-path "~/.emacs.d/matlab-emacs")
 (load-library "matlab-load")
-
 (add-hook 'matlab-mode-hook 'nates-matlab-mode)
 (add-hook 'matlab-shell-mode-hook 'nates-matlab-shell-mode)
 (setq auto-mode-alist
@@ -601,6 +626,11 @@
 ;; make latexmk available via C-c C-c
 ;; Note: SyncTeX is setup via ~/.latexmkrc (see below)
 (add-hook 'LaTeX-mode-hook (lambda ()
+                             (setq-local company-backends 
+                                         '((company-files
+                                            company-capf)
+                                           (company-keywords 
+                                            company-dabbrev)))
 			     (push
 			      '("latexmk" "latexmk -pdf %s" TeX-run-TeX nil t
 				:help "Run latexmk on file")
@@ -717,7 +747,8 @@
         (setf beacon-color (face-background 'cursor))
         (setq ring-bell-function 
               (lambda ()
-                (beacon-blink))))
+                (beacon-blink)))
+        (beacon-mode t))
     (progn 
       (dolist (theme custom-enabled-themes)
         (disable-theme theme))      
