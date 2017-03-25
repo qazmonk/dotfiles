@@ -1,3 +1,3 @@
 #!/bin/bash
 
-/Applications/Emacs.app/Contents/MacOS/bin/emacsclient -c v"$@"
+e "$@"
