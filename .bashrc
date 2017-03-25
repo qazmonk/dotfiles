@@ -1,5 +1,12 @@
 export BASH_CONF="bashrc"
 
+LOCAL_BASHRC=".bashrc.local"
+if [ -e "$LOCAL_BASHRC" ]
+then
+   source $LOCAL_BASHRC
+fi
+
+
 export PATH=/usr/local/bin:$PATH
 export PATH=$PATH:/Applications/TeX/TeXShop.app/Contents/Resources/TeXShop/bin/tslatexmk
 export PATH=$PATH:/Applications/MATLAB_R2015b.app/bin
@@ -47,5 +54,12 @@ function prompt {
     export PS2=" | → $RESETCOLOR"
 }
 
-prompt
+case "$TERM" in
+    "dumb")
+        PS1="$ "
+        ;;
+    xterm*)
+        prompt
+        ;;
+esac
 
