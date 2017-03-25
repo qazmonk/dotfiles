@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
 ;; CUSTOM VARIABLES ;;
 ;;;;;;;;;;;;;;;;;;;;;;
 
@@ -72,6 +72,11 @@
     ("/Users/Nate/.emacs.d/elpa/color-theme-sanityinc-tomorrow-20160413.150/" "/Users/Nate/.emacs.d/elpa/monokai-theme-20160419.1444/" "/Users/Nate/.emacs.d/elpa/zenburn-theme-20160416.1011/" custom-theme-directory t "/Users/Nate/.emacs.d/emacs-color-theme-solarized")))
  '(fci-rule-color "#2a2a2a")
  '(glyphless-char-display-control (quote ((format-control . hex-code) (no-font . hex-code))))
+ '(god-mode-sticky-colors
+   (quote
+    (("C-" . "#2baad5")
+     ("M-" . "#6dc5e2")
+     ("C-M-" . "#cfecf5"))))
  '(highlight-changes-colors ("#FD5FF0" "#AE81FF"))
  '(highlight-tail-colors
    (quote
@@ -182,9 +187,11 @@
 (global-set-key (kbd "M-X") 'smex-major-mode-commands)
 ;; This is your old M-x.
 (global-set-key (kbd "C-c C-c M-x") 'execute-extended-command)
-
 (add-hook 'after-init-hook 'global-company-mode)
 (global-set-key (kbd "C-M-s-<tab>") 'company-other-backend)
+
+(global-set-key (kbd "C-'") 'set-mark-command) 
+
 ;;dunno if this actually works (I don't think it does)
 ;(require 'server)
 ;; (if (not (server-running-p))
@@ -217,8 +224,9 @@
 (setq-default indent-tabes-mode nil)
 
 (add-hook 'text-mode-hook (lambda () 
-                            (flyspell-mode)
-                            (auto-fill-mode)))
+                            (flyspell-mode)))
+
+
 
 (defun push-mark-no-activate ()
   "Pushes `point' to `mark-ring' and does not activate the region
@@ -252,20 +260,67 @@
 (require 'multi-scratch)
 
 ;;;;;;;;;;;;;;
-;; HELM/IDO ;;
+;; GOD-MODE ;;
+;;;;;;;;;;;;;;
+
+(require 'god-mode)
+(global-set-key (kbd "<escape>") 'god-mode-all)
+
+(defun my-update-cursor ()
+  (setq cursor-type (if (or god-local-mode buffer-read-only)
+                        'box
+                      'bar)))
+(defun c/god-mode-update-cursor ()
+  (when (not god-mode-sticky-modifiers)
+   (let ((limited-colors-p (> 257 (length (defined-colors)))))
+     (cond (god-local-mode (progn
+                             (set-face-background 'mode-line
+                                                  (if limited-colors-p "white" "#e9e2cb"))
+                             (set-face-background 'mode-line-inactive
+                                                  (if limited-colors-p "white" "#e9e2cb"))))
+           (t (progn
+                (set-face-background 'mode-line 
+                                     (if limited-colors-p "black" "#0a2832"))
+                (set-face-background 'mode-line-inactive
+                                     (if limited-colors-p "black" "#0a2832"))))))))
+(defun god-has-priority ()
+  "Try to ensure that god mode keybindings retain priority over other minor modes."
+  (unless (and (consp (car minor-mode-map-alist)) 
+               (eq (caar minor-mode-map-alist) 'god-local-mode-map))
+    (let ((godkeys (assq 'god-local-mode minor-mode-map-alist)))
+      (assq-delete-all 'god-local-mode minor-mode-map-alist)
+      (add-to-list 'minor-mode-map-alist godkeys))))
+
+(add-hook 'god-mode-enabled-hook 'c/god-mode-update-cursor)
+(add-hook 'god-mode-enabled-hook 'god-has-priority)
+(add-hook 'god-mode-disabled-hook 'c/god-mode-update-cursor)
+
+(define-key god-local-mode-map (kbd ".") 'repeat)
+
+(require 'god-mode-isearch)
+(define-key isearch-mode-map (kbd "<escape>") 'god-mode-isearch-activate)
+(define-key god-mode-isearch-map (kbd "<escape>") 'god-mode-isearch-disable)
+
+(setq god-exempt-major-modes nil)
+(setq god-exempt-predicates nil)
+
+;(define-key god-local-mode-map [remap paredit-close-round] 'god-mode-self-insert)
+
+
+(require 'imenu-anywhere)
+(global-set-key (kbd "M-i") 'imenu-anywhere)
+;;;;;;;;;;;;;;
+;; IDO ;;
 ;;;;;;;;;;;;;;
 
 
-(global-set-key (kbd "M-i") 'helm-imenu)
-(require 'helm-config)
-(helm-mode 1)
-
-(define-key helm-map (kbd "<tab>") 'helm-execute-persistent-action) ; rebind tab to do persistent action
-(define-key helm-map (kbd "C-i") 'helm-execute-persistent-action) ; make TAB works in terminal
-(define-key helm-map (kbd "C-z")  'helm-select-action) ; list actions using C-z
-
-(global-set-key (kbd "C-x C-b") 'helm-mini)
 (global-set-key (kbd "C-x C-f") 'ido-find-file)
+(ido-mode t)
+(ido-everywhere t)
+(require 'ido-ubiquitous)
+(ido-ubiquitous-mode 1)
+(put 'dired-do-rename 'ido 'find-file)
+(put 'dired-do-copy 'ido 'find-file)
 ;;;;;;;;;;;;;;;;;;;;
 ;; VISUAL EFFECTS ;;
 ;;;;;;;;;;;;;;;;;;;
@@ -397,8 +452,8 @@
 ;; LISP ;;
 ;;;;;;;;;;
 
-;(setq inferior-lisp-program "/usr/local/bin/sbcl")
-(setq inferior-lisp-program "/usr/local/bin/ccl64")
+(setq inferior-lisp-program "/usr/local/bin/sbcl")
+;(setq inferior-lisp-program "/usr/local/bin/ccl64")
 (add-to-list 'load-path "~/.emacs.d/slime-2.8")
 (require 'slime-autoloads)
 
@@ -704,7 +759,7 @@
   (local-set-key (kbd "C-M-<right>") 'org-demote-subtree))
 (add-hook 'org-mode-hook 'nates-org-mode-hook)
 
-
+(setq org-todo-keywords '((sequence "TODO(t)" "IN-PROGRESS(i!)" "|" "DONE(d!)")))
 ;;;AFTER PACKAGE INITIALIZATION 
 (package-initialize)
 ;make path variables the same in emacs and the shell
