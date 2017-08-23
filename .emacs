@@ -2,7 +2,7 @@
 ;; CUSTOM VARIABLES ;;
 ;;;;;;;;;;;;;;;;;;;;;;
 
-(setq debug-on-error nil)
+(setq debug-on-error t)
 (setq-default fill-column 90)
 
 (global-unset-key (kbd "C-z"))
@@ -12,12 +12,23 @@
 ;;(setq warning-minimum-level :error)
 (setq inhibit-splash-screen t)
 
-(require 'package)
+;; (require 'package)
+;; (package-initialize)
+;; (setq package-archives
+;;       '(("gnu" . "http://elpa.gnu.org/packages/")
+;; 	("marmalade" . "http://marmalade-repo.org/packages/")
+;; 	("melpa" . "http://melpa.milkbox.net/packages/")))
+
+(require 'package) ;; You might already have this line
+(let* ((no-ssl (and (memq system-type '(windows-nt ms-dos))
+                    (not (gnutls-available-p))))
+       (url (concat (if no-ssl "http" "https") "://melpa.org/packages/")))
+  (add-to-list 'package-archives (cons "melpa" url) t))
+(add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
+(when (< emacs-major-version 24)
+  ;; For important compatibility libraries like cl-lib
+  (add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
 (package-initialize)
-(setq package-archives
-      '(("gnu" . "http://elpa.gnu.org/packages/")
-	("marmalade" . "http://marmalade-repo.org/packages/")
-	("melpa" . "http://melpa.milkbox.net/packages/")))
 
 
 (set-default 'truncate-lines t)
@@ -66,10 +77,10 @@
  '(custom-enabled-themes (quote (sanityinc-tomorrow-night)))
  '(custom-safe-themes
    (quote
-    ("8db4b03b9ae654d4a57804286eb3e332725c84d7cdab38463cb6b97d5762ad26" "1e3b2c9e7e84bb886739604eae91a9afbdfb2e269936ec5dd4a9d3b7a943af7f" "c4465c56ee0cac519dd6ab6249c7fd5bb2c7f7f78ba2875d28a50d3c20a59473" "82d2cac368ccdec2fcc7573f24c3f79654b78bf133096f9b40c20d97ec1d8016" "1b8d67b43ff1723960eb5e0cba512a2c7a2ad544ddb2533a90101fd1852b426e" "bb08c73af94ee74453c90422485b29e5643b73b05e8de029a6909af6a3fb3f58" "06f0b439b62164c6f8f84fdda32b62fb50b6d00e8b01c2208e55543a6337433a" "628278136f88aa1a151bb2d6c8a86bf2b7631fbea5f0f76cba2a0079cd910f7d" "68d36308fc6e7395f7e6355f92c1dd9029c7a672cbecf8048e2933a053cf27e6" "3dafeadb813a33031848dfebfa0928e37e7a3c18efefa10f3e9f48d1993598d3" "05c3bc4eb1219953a4f182e10de1f7466d28987f48d647c01f1f0037ff35ab9a" default)))
+    ("9b59e147dbbde5e638ea1cde5ec0a358d5f269d27bd2b893a0947c4a867e14c1" "8db4b03b9ae654d4a57804286eb3e332725c84d7cdab38463cb6b97d5762ad26" "1e3b2c9e7e84bb886739604eae91a9afbdfb2e269936ec5dd4a9d3b7a943af7f" "c4465c56ee0cac519dd6ab6249c7fd5bb2c7f7f78ba2875d28a50d3c20a59473" "82d2cac368ccdec2fcc7573f24c3f79654b78bf133096f9b40c20d97ec1d8016" "1b8d67b43ff1723960eb5e0cba512a2c7a2ad544ddb2533a90101fd1852b426e" "bb08c73af94ee74453c90422485b29e5643b73b05e8de029a6909af6a3fb3f58" "06f0b439b62164c6f8f84fdda32b62fb50b6d00e8b01c2208e55543a6337433a" "628278136f88aa1a151bb2d6c8a86bf2b7631fbea5f0f76cba2a0079cd910f7d" "68d36308fc6e7395f7e6355f92c1dd9029c7a672cbecf8048e2933a053cf27e6" "3dafeadb813a33031848dfebfa0928e37e7a3c18efefa10f3e9f48d1993598d3" "05c3bc4eb1219953a4f182e10de1f7466d28987f48d647c01f1f0037ff35ab9a" default)))
  '(custom-theme-load-path
    (quote
-    ("/Users/Nate/.emacs.d/elpa/color-theme-sanityinc-tomorrow-20160413.150/" "/Users/Nate/.emacs.d/elpa/monokai-theme-20160419.1444/" "/Users/Nate/.emacs.d/elpa/zenburn-theme-20160416.1011/" custom-theme-directory t "/Users/Nate/.emacs.d/emacs-color-theme-solarized")))
+    ("/Users/Nate/.emacs.d/elpa/color-theme-sanityinc-tomorrow-20160413.150/" "/Users/Nate/.emacs.d/elpa/monokai-theme-20160419.1444/" "/Users/Nate/.emacs.d/elpa/zenburn-theme-20160416.1011/" custom-theme-directory t "/Users/Nate/.emacs.d/emacs-color-theme-solarized" "/home/nate/.emacs.d/themes")))
  '(fci-rule-color "#2a2a2a")
  '(glyphless-char-display-control (quote ((format-control . hex-code) (no-font . hex-code))))
  '(god-mode-sticky-colors
@@ -259,6 +270,19 @@
 (add-to-list 'load-path "~/.emacs.d/multi-scratch/")
 (require 'multi-scratch)
 
+;;PAREDIT
+(add-to-list 'load-path "~/.emacs.d/paredit/")
+(autoload 'enable-paredit-mode "paredit"
+  "Turn on pseudo-structural editing of Lisp code."
+  t)
+
+;;ESHELL
+(require 'eshell)
+(require 'em-smart)
+(setq eshell-where-to-jump 'begin)
+(setq eshell-review-quick-commands nil)
+(setq eshell-smart-space-goes-to-end t)
+
 ;;;;;;;;;;;;;;
 ;; GOD-MODE ;;
 ;;;;;;;;;;;;;;
@@ -307,6 +331,7 @@
 ;(define-key god-local-mode-map [remap paredit-close-round] 'god-mode-self-insert)
 
 
+
 (require 'imenu-anywhere)
 (global-set-key (kbd "M-i") 'imenu-anywhere)
 ;;;;;;;;;;;;;;
@@ -317,7 +342,7 @@
 (global-set-key (kbd "C-x C-f") 'ido-find-file)
 (ido-mode t)
 (ido-everywhere t)
-(require 'ido-ubiquitous)
+(require 'ido-completing-read+)
 (ido-ubiquitous-mode 1)
 (put 'dired-do-rename 'ido 'find-file)
 (put 'dired-do-copy 'ido 'find-file)
@@ -481,7 +506,7 @@
       (indent-according-to-mode)))
 (defun nates-general-lisp-mode ()
   (company-mode)
-  (paredit-mode t)
+  (enable-paredit-mode)
   (show-paren-mode t)
   (highlight-parentheses-mode t)
   (local-set-key (kbd "RET") 'electrify-return-if-match)
@@ -565,33 +590,33 @@
 
 ;; -- opam and utop setup --------------------------------
 ;; Setup environment variables using opam
-(dolist
-   (var (car (read-from-string
-              (shell-command-to-string "opam config env --sexp"))))
-  (setenv (car var) (cadr var)))
+;; (dolist
+;;    (var (car (read-from-string
+;;               (shell-command-to-string "opam config env --sexp"))))
+;;   (setenv (car var) (cadr var)))
 
-;; Update the emacs path
-(setq exec-path (split-string (getenv "PATH") path-separator))
-;; Update the emacs load path
-(push (concat (getenv "OCAML_TOPLEVEL_PATH")
-          "/../../share/emacs/site-lisp") load-path)
-;; Automatically load utop.el
-(autoload 'utop "utop" "Toplevel for OCaml" t)
-(autoload 'utop-setup-ocaml-buffer "utop" "Toplevel for OCaml" t)
-(add-hook 'tuareg-mode-hook 'utop-setup-ocaml-buffer)
-(add-hook 'tuareg-mode-hook 'merlin-mode)
+;; ;; Update the emacs path
+;; (setq exec-path (split-string (getenv "PATH") path-separator))
+;; ;; Update the emacs load path
+;; (push (concat (getenv "OCAML_TOPLEVEL_PATH")
+;;           "/../../share/emacs/site-lisp") load-path)
+;; ;; Automatically load utop.el
+;; (autoload 'utop "utop" "Toplevel for OCaml" t)
+;; (autoload 'utop-setup-ocaml-buffer "utop" "Toplevel for OCaml" t)
+;; (add-hook 'tuareg-mode-hook 'utop-setup-ocaml-buffer)
+;; (add-hook 'tuareg-mode-hook 'merlin-mode)
 
-;;Add els dir to load path
-(add-to-list 'load-path "~/.emacs.d/els")
+;; ;;Add els dir to load path
+;; (add-to-list 'load-path "~/.emacs.d/els")
 
-;;column marking
-(require 'column-marker)
-(add-hook 'tuareg-mode-hook (lambda () (interactive) (column-marker-1 80)))
+;; ;;column marking
+;; (require 'column-marker)
+;; (add-hook 'tuareg-mode-hook (lambda () (interactive) (column-marker-1 80)))
 
 
-;;ocp-indent
-(require 'ocp-indent)
-(load-file "/Users/Nate/.opam/system/share/emacs/site-lisp/ocp-indent.el")
+;; ;;ocp-indent
+;; (require 'ocp-indent)
+;; (load-file "/Users/Nate/.opam/system/share/emacs/site-lisp/ocp-indent.el")
 
 
 ;;;;;;;;;;;;
@@ -626,20 +651,20 @@
                 (company-keywords 
                  company-dabbrev-code))))
 
-(add-to-list 'load-path "~/.emacs.d/matlab-emacs")
-(load-library "matlab-load")
-(add-hook 'matlab-mode-hook 'nates-matlab-mode)
-(add-hook 'matlab-shell-mode-hook 'nates-matlab-shell-mode)
-(setq auto-mode-alist
-    (cons
-     '("\\.m$" . matlab-mode)
-     auto-mode-alist))
+;; (add-to-list 'load-path "~/.emacs.d/matlab-emacs")
+;; (load-library "matlab-load")
+;; (add-hook 'matlab-mode-hook 'nates-matlab-mode)
+;; (add-hook 'matlab-shell-mode-hook 'nates-matlab-shell-mode)
+;; (setq auto-mode-alist
+;;     (cons
+;;      '("\\.m$" . matlab-mode)
+;;      auto-mode-alist))
 
 ;;;;;;;;;;;
 ;; JAVA  ;;
 ;;;;;;;;;;;
-(add-to-list 'load-path "~/.emacs.d/stubify/")
-(load-library "stubify")
+;; (add-to-list 'load-path "~/.emacs.d/stubify/")
+;; (load-library "stubify")
 
 ;;;;;;;;;;;;;;;;
 ;; Javascript ::
@@ -724,7 +749,6 @@
 ;;;;;;;;;;;;;;
 
 (require 'org)
-(require 'org-drill)
 
 (setq org-directory "~/Dropbox/org")
 (setq org-default-notes-file "~/Dropbox/org/agenda/notes.org")
@@ -765,11 +789,11 @@
 ;make path variables the same in emacs and the shell
 (when (memq window-system '(mac ns))
   (exec-path-from-shell-initialize))
-(setq opam-share
-      (substring
-       (shell-command-to-string "opam config var share 2> /dev/null") 0 -1))
-(add-to-list 'load-path (concat opam-share "/emacs/site-lisp"))
-(require 'merlin)
+;; (setq opam-share
+;;       (substring
+;;        (shell-command-to-string "opam config var share 2> /dev/null") 0 -1))
+;; (add-to-list 'load-path (concat opam-share "/emacs/site-lisp"))
+;(require 'merlin)
 
 
 (custom-set-faces
@@ -777,9 +801,26 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(mark-1 ((t (:background "MediumPurple1"))))
- '(mark-2 ((t (:background "MediumPurple3"))))
- '(mark-3 ((t (:background "MediumPurple4")))))
+ )
+
+(if (display-graphic-p) 
+      (progn
+        (dolist (theme custom-enabled-themes)
+          (disable-theme theme))
+        (load-theme 'brin t)
+        (when tool-bar-mode
+          (message "turning off the toolbar")
+          (tool-bar-mode -1))
+        (message (format "%s" (face-background 'cursor)))    
+        (setf beacon-color (face-background 'cursor))
+        (setq ring-bell-function 
+              (lambda ()
+                (beacon-blink)))
+        (beacon-mode t))
+    (progn 
+      (dolist (theme custom-enabled-themes)
+        (disable-theme theme))      
+      (load-theme 'solarized t)))
 
 ;;;;;;;;;;;;;;;;;
 ;; CLIENT CODE ;;
@@ -794,7 +835,7 @@
       (progn
         (dolist (theme custom-enabled-themes)
           (disable-theme theme))
-        (load-theme 'sanityinc-tomorrow-night t)
+        (load-theme 'brin t)
         (when tool-bar-mode
           (message "turning off the toolbar")
           (tool-bar-mode -1))

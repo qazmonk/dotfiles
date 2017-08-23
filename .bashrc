@@ -7,7 +7,7 @@ then
    source $LOCAL_BASHRC
 fi
 
-export PATH=/usr/local/bin:$PATH
+export PATH=/usr/local/bin:~/dotfiles/bin:$PATH
 
 alias ls='ls -GFh'
 alias ll='ls -l'
