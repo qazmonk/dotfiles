@@ -1,3 +1,4 @@
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; CUSTOM VARIABLES ;;
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -105,6 +106,7 @@
  '(ido-enable-flex-matching t)
  '(ido-mode (quote both) nil (ido))
  '(indent-tabs-mode nil)
+ '(jit-lock-debug-mode t)
  '(js-indent-level 2)
  '(js2-basic-offset 2)
  '(magit-diff-use-overlays nil)
@@ -194,6 +196,7 @@
                   ; when Smex is auto-initialized on its first run.
 
 (global-set-key (kbd "C-c SPC") 'ace-jump-mode)
+(setq ace-jump-mode-scope 'window)
 (global-set-key (kbd "M-x") 'smex)
 (global-set-key (kbd "M-X") 'smex-major-mode-commands)
 ;; This is your old M-x.
@@ -238,6 +241,9 @@
                             (flyspell-mode)))
 
 
+;;image+ to add zooming
+(eval-after-load 'image '(require 'image+))
+(eval-after-load 'image+ '(imagex-global-sticky-mode 1))
 
 (defun push-mark-no-activate ()
   "Pushes `point' to `mark-ring' and does not activate the region
