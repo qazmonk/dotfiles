@@ -1,9 +1,7 @@
-
 ;;;;;;;;;;;;;;;;;;;;;
 ;; CUSTOM VARIABLES ;;
 ;;;;;;;;;;;;;;;;;;;;;;
-
-(setq debug-on-error t)
+(setq debug-on-error nil)
 (setq-default fill-column 90)
 
 (global-unset-key (kbd "C-z"))
@@ -78,10 +76,12 @@
  '(custom-enabled-themes (quote (sanityinc-tomorrow-night)))
  '(custom-safe-themes
    (quote
-    ("9b59e147dbbde5e638ea1cde5ec0a358d5f269d27bd2b893a0947c4a867e14c1" "8db4b03b9ae654d4a57804286eb3e332725c84d7cdab38463cb6b97d5762ad26" "1e3b2c9e7e84bb886739604eae91a9afbdfb2e269936ec5dd4a9d3b7a943af7f" "c4465c56ee0cac519dd6ab6249c7fd5bb2c7f7f78ba2875d28a50d3c20a59473" "82d2cac368ccdec2fcc7573f24c3f79654b78bf133096f9b40c20d97ec1d8016" "1b8d67b43ff1723960eb5e0cba512a2c7a2ad544ddb2533a90101fd1852b426e" "bb08c73af94ee74453c90422485b29e5643b73b05e8de029a6909af6a3fb3f58" "06f0b439b62164c6f8f84fdda32b62fb50b6d00e8b01c2208e55543a6337433a" "628278136f88aa1a151bb2d6c8a86bf2b7631fbea5f0f76cba2a0079cd910f7d" "68d36308fc6e7395f7e6355f92c1dd9029c7a672cbecf8048e2933a053cf27e6" "3dafeadb813a33031848dfebfa0928e37e7a3c18efefa10f3e9f48d1993598d3" "05c3bc4eb1219953a4f182e10de1f7466d28987f48d647c01f1f0037ff35ab9a" default)))
+    ("e0d42a58c84161a0744ceab595370cbe290949968ab62273aed6212df0ea94b4" "3cd28471e80be3bd2657ca3f03fbb2884ab669662271794360866ab60b6cb6e6" "3cc2385c39257fed66238921602d8104d8fd6266ad88a006d0a4325336f5ee02" "e9776d12e4ccb722a2a732c6e80423331bcb93f02e089ba2a4b02e85de1cf00e" "72a81c54c97b9e5efcc3ea214382615649ebb539cb4f2fe3a46cd12af72c7607" "58c6711a3b568437bab07a30385d34aacf64156cc5137ea20e799984f4227265" "3d5ef3d7ed58c9ad321f05360ad8a6b24585b9c49abcee67bdcbb0fe583a6950" "b3775ba758e7d31f3bb849e7c9e48ff60929a792961a2d536edec8f68c671ca5" "9b59e147dbbde5e638ea1cde5ec0a358d5f269d27bd2b893a0947c4a867e14c1" "8db4b03b9ae654d4a57804286eb3e332725c84d7cdab38463cb6b97d5762ad26" "1e3b2c9e7e84bb886739604eae91a9afbdfb2e269936ec5dd4a9d3b7a943af7f" "c4465c56ee0cac519dd6ab6249c7fd5bb2c7f7f78ba2875d28a50d3c20a59473" "82d2cac368ccdec2fcc7573f24c3f79654b78bf133096f9b40c20d97ec1d8016" "1b8d67b43ff1723960eb5e0cba512a2c7a2ad544ddb2533a90101fd1852b426e" "bb08c73af94ee74453c90422485b29e5643b73b05e8de029a6909af6a3fb3f58" "06f0b439b62164c6f8f84fdda32b62fb50b6d00e8b01c2208e55543a6337433a" "628278136f88aa1a151bb2d6c8a86bf2b7631fbea5f0f76cba2a0079cd910f7d" "68d36308fc6e7395f7e6355f92c1dd9029c7a672cbecf8048e2933a053cf27e6" "3dafeadb813a33031848dfebfa0928e37e7a3c18efefa10f3e9f48d1993598d3" "05c3bc4eb1219953a4f182e10de1f7466d28987f48d647c01f1f0037ff35ab9a" default)))
  '(custom-theme-load-path
    (quote
     ("/Users/Nate/.emacs.d/elpa/color-theme-sanityinc-tomorrow-20160413.150/" "/Users/Nate/.emacs.d/elpa/monokai-theme-20160419.1444/" "/Users/Nate/.emacs.d/elpa/zenburn-theme-20160416.1011/" custom-theme-directory t "/Users/Nate/.emacs.d/emacs-color-theme-solarized" "/home/nate/.emacs.d/themes")))
+ '(eshell-prompt-regexp "[^#$|
+]* \\([#$]\\|\\(|->\\)\\) ")
  '(fci-rule-color "#2a2a2a")
  '(glyphless-char-display-control (quote ((format-control . hex-code) (no-font . hex-code))))
  '(god-mode-sticky-colors
@@ -109,6 +109,7 @@
  '(jit-lock-debug-mode t)
  '(js-indent-level 2)
  '(js2-basic-offset 2)
+ '(linum-format " %7i ")
  '(magit-diff-use-overlays nil)
  '(magit-push-arguments nil)
  '(matlab-functions-have-end t)
@@ -211,7 +212,11 @@
 ;; (if (not (server-running-p))
 ;;     (server-start))
 
-(windmove-default-keybindings 'super)
+(global-set-key (kbd "<C-right>") 'windmove-right)
+(global-set-key (kbd "<C-left>") 'windmove-left)
+(global-set-key (kbd "<C-up>") 'windmove-up)
+(global-set-key (kbd "<C-down>") 'windmove-down)
+
 (menu-bar-mode -1)
 
 ;;dont store backups in the same directory as files and periodically delete them as well
@@ -231,8 +236,9 @@
         (delete-file file)))))
 
 ;;change keys for mac keyboard
-(setq mac-command-modifier 'meta)
-(setq mac-option-modifier 'super)
+(when (equal system-type 'darwin)
+ (setq mac-command-modifier 'meta)
+ (setq mac-option-modifier 'super))
 
 ;;GET THOSE GOD DAMN TABS OUT OF HERE
 (setq-default indent-tabes-mode nil)
@@ -259,7 +265,7 @@
   This is the same as using \\[set-mark-command] with the prefix argument."
   (interactive)
   (set-mark-command 1))
-(global-set-key (kbd "M-`") 'jump-to-mark)
+(global-set-key (kbd "M-SPC") 'jump-to-mark)
 
 ;;COMPANY MODE
 (setq company-backends
@@ -282,12 +288,72 @@
   "Turn on pseudo-structural editing of Lisp code."
   t)
 
-;;ESHELL
+;;;;;;;;;;;;;;;
+;;   ESHELL  ;;
+;;;;;;;;;;;;;;;
+
 (require 'eshell)
 (require 'em-smart)
 (setq eshell-where-to-jump 'begin)
 (setq eshell-review-quick-commands nil)
 (setq eshell-smart-space-goes-to-end t)
+
+(defmacro with-face (str &rest properties)
+  (if (> (length properties) 1)
+      `(propertize ,str 'face (list ,@properties))
+    (if (= (length properties) 1)
+        `(propertize ,str 'face ,@properties)
+      str)))
+
+
+(defvar eshell-prev-dir "")
+(defvar eshell-prev-time '(0 0 0 0))
+(defun nates-eshell-hook ()
+  (set (make-local-variable 'eshell-prev-dir) (eshell/pwd)))
+
+(defun shk-eshell-prompt ()
+  (let ((header-bg "#fff"))
+    (concat
+     (when (not (string= eshell-prev-dir (eshell/pwd)))
+       (setq eshell-prev-dir (eshell/pwd))
+       (concat
+        (with-face (eshell/pwd) 
+                   :foreground (face-foreground font-lock-function-name-face))
+        ;; (with-face
+        ;;  (or (ignore-errors (format "(%s)" (vc-responsible-backend default-directory))) "")
+        ;;  :background header-bg)
+        
+        (with-face "\n")
+        
+        ))
+     (with-face user-login-name :foreground "blue")
+     "$ ")))
+
+(defun fancy-prompot ()
+  (concat
+   (when (or (not (string= eshell-prev-dir (eshell/pwd)))
+             (not (time-less-p (time-subtract (current-time)
+                                              eshell-prev-time)
+                               '(0 30 0 0))))
+     (setq eshell-prev-dir (eshell/pwd))
+     (setq eshell-prev-time (current-time))
+     (concat
+      (with-face user-login-name
+                 'eshell-ls-readonly-face)
+      (with-face " @ "
+                 'eshell-ls-symlink-face)
+      (with-face (eshell/pwd) 
+                 'eshell-ls-directory-face)
+      (with-face "\n")))
+   (with-face " |-> " 'font-lock-constant-face)))
+(defun simple-prompt ()
+  (concat
+   (with-face (eshell/pwd) 'eshell-ls-directory-face)
+   " $ "))
+(add-hook 'eshell-mode-hook 'nates-eshell-hook)
+(setq eshell-prompt-function 'fancy-prompot)
+(setq eshell-highlight-prompt nil)
+
 
 ;;;;;;;;;;;;;;
 ;; GOD-MODE ;;
@@ -513,7 +579,7 @@
 (defun nates-general-lisp-mode ()
   (company-mode)
   (enable-paredit-mode)
-  (show-paren-mode t)
+  (show-paren-mode t)   
   (highlight-parentheses-mode t)
   (local-set-key (kbd "RET") 'electrify-return-if-match)
   (define-key company-active-map (kbd "\C-n") 'company-select-next)
@@ -696,6 +762,11 @@
 ;;;;;;;;;;;
 ;; LATEX ;;
 ;;;;;;;;;;;
+
+(require 'company-auctex)
+
+
+
 (setq TeX-auto-save t)
 (setq TeX-parse-self t)
 ;(setq-default TeX-master nil)
@@ -703,7 +774,6 @@
 (add-hook 'LaTeX-mode-hook 'flyspell-mode)
 (add-hook 'LaTeX-mode-hook 'LaTeX-math-mode)
 (add-hook 'LaTeX-mode-hook 'turn-on-reftex)
-(add-hook 'LaTeX-mode-hook (lambda () (auto-fill-mode -1)))
 (setq reftex-plug-into-AUCTeX t)
 (setq TeX-PDF-mode t)
 (setq LaTeX-command-style '(("" "%(PDF)%(latex) -file-line-error %S%(PDFout)"))) 
@@ -717,6 +787,8 @@
                                             company-capf)
                                            (company-keywords 
                                             company-dabbrev)))
+                             (auto-fill-mode -1)
+                             (company-auctex-init)
 			     (push
 			      '("latexmk" "latexmk -pdf %s" TeX-run-TeX nil t
 				:help "Run latexmk on file")
