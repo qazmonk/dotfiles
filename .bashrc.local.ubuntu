@@ -1,3 +1,4 @@
 alias uncompress='bzip2 -cd'
 alias unarchive='tar xvf -'
-alias mntbox='sshfs qazmonk@toast.whatbox.ca: ~/mnt/'
+alias mntbox='sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 qazmonk@toast.whatbox.ca: ~/mnt/'
+alias open='xdg-open'
