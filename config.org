@@ -241,12 +241,15 @@
     (setq reb-re-syntax (quote string)))
   (use-package beacon
     :if window-system
-    :init
+    :config
     (setf beacon-color (face-background 'cursor))
     (setq ring-bell-function 
           (lambda ()
             (beacon-blink)))
     (beacon-mode t))
+  (use-package undo-tree
+    :config
+    (global-undo-tree-mode t))
 #+End_SRC
 * Major Modes
 ** Shells 
