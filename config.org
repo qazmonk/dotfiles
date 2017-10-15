@@ -156,22 +156,11 @@
     (smex-initialize)
     (global-set-key (kbd "C-c C-c M-x") 'execute-extended-command) ; this is the old M-x
     :bind (("M-x" . smex)
-           ("M-X" . smex-major-mode-commands)
-           
-           ))
+           ("M-X" . smex-major-mode-commands)))
   (use-package ace-jump-mode
     :config
     (setq ace-jump-mode-scope 'window)
     :bind (("C-c SPC" . ace-jump-mode)))
-  (use-package company-mode
-    :config
-    (setq company-backends
-          '((company-files
-             company-capf)
-            (company-keywords 
-             company-dabbrev-code)))
-    (add-hook 'after-init-hook 'global-company-mode)
-    :bind (("C-M-s-<tab>" . company-other-backend)))
   (use-package image
     :config
     (imagex-global-sticky-mode 1))
@@ -285,29 +274,34 @@
     (defvar eshell-prev-time '(0 0 0 0))
     (defun nates-eshell-hook ()
       (set (make-local-variable 'eshell-prev-dir) (eshell/pwd)))
-    (defun fancy-prompot ()
-      (concat
-       (when (or (not (string= eshell-prev-dir (eshell/pwd)))
-                 (not (time-less-p (time-subtract (current-time)
-                                                  eshell-prev-time)
-                                   '(0 30 0 0))))
-         (setq eshell-prev-dir (eshell/pwd))
-         (setq eshell-prev-time (current-time))
-         (concat
-          (with-face user-login-name
-                     'eshell-ls-readonly-face)
-          (with-face " @ "
-                     'eshell-ls-symlink-face)
-          (with-face (eshell/pwd) 
-                     'eshell-ls-directory-face)
-          (with-face "\n")))
-       (with-face " |-> " 'font-lock-constant-face)))
+    (defun fancy-prompt ()
+      (let (prompt) 
+        (setq prompt
+              (concat
+               (when (or (not (string= eshell-prev-dir (eshell/pwd)))
+                         (not (time-less-p (time-subtract (current-time)
+                                                          eshell-prev-time)
+                                           '(0 30 0 0))))
+                 (setq eshell-prev-dir (eshell/pwd))
+                 (setq eshell-prev-time (current-time))
+                 (concat
+                  (with-face user-login-name
+                             'eshell-ls-readonly-face)
+                  (with-face " @ "
+                             'eshell-ls-symlink-face)
+                  (with-face (eshell/pwd) 
+                             'eshell-ls-directory-face)
+                  (with-face "\n")))
+               (with-face " |-> " 'font-lock-constant-face)))
+        (put-text-property 0 (length prompt) 'read-only t prompt)
+        (put-text-property 0 (length prompt) 
+                           'rear-nonsticky t prompt)
+        prompt))
+    
     (defun simple-prompt ()
-      (concat
-       (witph-face (eshell/pwd) 'eshell-ls-directory-face)
-       " $ "))
+      " $ ")
     (add-hook 'eshell-mode-hook 'nates-eshell-hook)
-    (setq eshell-prompt-function 'fancy-prompot)
+    (setq eshell-prompt-function 'fancy-prompt)
     (setq eshell-highlight-prompt nil))
 #+END_SRC
 *** shell
@@ -551,6 +545,14 @@
     :config
     (setq js-indent-level 2))
 #+END_SRC
+*** BASH
+#+BEGIN_SRC emacs-lisp
+  (use-package sh-script
+    :demand
+    :config
+    (add-to-list 'auto-mode-alist 
+                 '("\\.bashrc.*" . shell-script-mode)))
+#+END_SRC
 *** HTML
 #+BEGIN_SRC emacs-lisp
   (use-package tagedit
@@ -750,10 +752,20 @@
 ** Company mode
 #+BEGIN_SRC emacs-lisp
   (use-package company
-    :config
-    (setq company-dabbrev-code-modes
-          '(prog-mode batch-file-mode csharp-mode css-mode erlang-mode haskell-mode 
-                      jde-mode lua-mode python-mode matlab-mode matlab-shell-mode))
-    (setq company-dabbrev-downcase nil)
-    (setq company-idle-delay 0.1))
+      :demand
+      :config
+      (setq company-dabbrev-downcase nil)
+      (setq company-idle-delay 0.1)
+      (setq company-backends
+            '((company-files
+               company-capf)
+              (company-keywords 
+               company-dabbrev-code)))
+      (setq company-dabbrev-code-modes
+            '(prog-mode batch-file-mode csharp-mode css-mode 
+                        erlang-mode haskell-mode jde-mode lua-mode
+                        python-mode matlab-mode matlab-shell-mode))    
+      (add-hook 'after-init-hook 'global-company-mode)
+      :bind (("C-M-s-<tab>" . company-other-backend)))
+
 #+END_SRC
