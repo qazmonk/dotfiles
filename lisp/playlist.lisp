@@ -1,8 +1,6 @@
 (load "~/quicklisp/setup.lisp")
 (ql:quickload :inferior-shell)
 
-
-
 (defmacro with-gensyms ((&rest names) &body body)
   (let ((varlist nil))
     (dolist (name names)
@@ -18,7 +16,8 @@
 	       (when (listp (caddr as))
 		 (cadr (caddr as))))
 	     (get-name-list (as)
-	       (mapcar (lambda (s) (format nil "~:[-~;--~]~a" (> (length s) 1)
+	       (mapcar (lambda (s) (format nil "~:[-~;--~]~a" 
+					   (> (length s) 1)
 					   s))
 		       (if (listp (car as))
 			   (car as)
@@ -36,7 +35,9 @@
 	   (cond ,@(loop for as in arg-slots
 		      collecting
 			`((or ,@(loop for name in (get-name-list as)
-				   collecting `(string= ,name (car ,remaining-args))))
+				   collecting 
+				     `(string= ,name 
+					       (car ,remaining-args))))
 			  (setq ,(get-sym as) ,(if (eq :value (get-type as))
 						   `(cadr ,remaining-args)
 						   't))
@@ -69,7 +70,8 @@
       (error "Can't reliably convert wild pathnames."))
     (if (not (directory-pathname-p name))
       (make-pathname
-       :directory (append (or (pathname-directory pathname) (list :relative))
+       :directory (append (or (pathname-directory pathname) 
+			      (list :relative))
                           (list (file-namestring pathname)))
        :name      nil
        :type      nil
@@ -84,15 +86,17 @@
     (flet ((make-tmp-filename (filename)
 	     (make-pathname
 	      :defaults (pathname-as-directory tmp-dir)
-	      :name (pathname-name filename) :type (pathname-type filename))))
-      
+	      :name (pathname-name filename) 
+	      :type (pathname-type filename))))
      (when (and tmp-dir)
-       (inferior-shell:run (format nil +copy-if-cmdstr+ (make-tmp-filename (car args)) 
+       (inferior-shell:run (format nil +copy-if-cmdstr+ 
+				   (make-tmp-filename (car args)) 
 				   (namestring (pathname (car args)))
 				   (make-tmp-filename (car args)))
 			   :on-error nil)
        (dolist (filename (rest args))
-	 (inferior-shell:run (format nil +copy-if-cmdstr-background+ (make-tmp-filename filename) 
+	 (inferior-shell:run (format nil +copy-if-cmdstr-background+ 
+				     (make-tmp-filename filename) 
 				     filename (make-tmp-filename filename)
 				     :on-error nil))))
      (let ((last-filename))
@@ -102,15 +106,20 @@
 	(if tmp-dir
 	    (progn
 	      (when last-filename
-		(inferior-shell:run (format nil "rm \"~a\""
-					    (make-tmp-filename last-filename))))
-	      (inferior-shell:run (format nil "vlc --fullscreen --play-and-exit \"~a\""
-					  (make-tmp-filename filename)))
+		(inferior-shell:run 
+		 (format nil "rm \"~a\""
+			 (make-tmp-filename last-filename))))
+	      (inferior-shell:run 
+	       (format nil "vlc --fullscreen --play-and-exit \"~a\""
+		       (make-tmp-filename filename)))
 	      (setq last-filename filename))
 	    
-	    (inferior-shell:run (format nil "vlc --fullscreen --play-and-exit \"~a\"" filename))))
+	    (inferior-shell:run 
+	     (format nil "vlc --fullscreen --play-and-exit \"~a\"" 
+		     filename))))
       (when last-filename
-		(inferior-shell:run (format nil "rm \"~a\""
-					    (make-tmp-filename last-filename))))))))
+		(inferior-shell:run 
+		 (format nil "rm \"~a\""
+			 (make-tmp-filename last-filename))))))))
 
 
