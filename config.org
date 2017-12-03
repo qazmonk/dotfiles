@@ -180,6 +180,8 @@
   (when window-system
     (load "natesminimap.el")
     (scroll-bar-mode -1)
+    (setq minimap-width-fraction 0.1)
+    (setq minimap-minimum-width 20)
     (minimap-mode)
     (defun minimap-toggle ()
       "Toggle minimap for current buffer."
@@ -344,12 +346,7 @@
 #+BEGIN_SRC emacs-lisp
   (use-package cmake-mode)
 #+END_SRC
-*** GIT
-#+BEGIN_SRC emacs-lisp
-(defun nates-git-ignore-mode ()
-  (add-to-list (make-local-variable 'company-backends) 'company-files))
-(add-to-list 'auto-mode-alist '("\\.gitignore\\'" . nates-gitignore-mode))
-#+END_SRC
+
 *** C++
 
 #+BEGIN_SRC emacs-lisp
@@ -527,6 +524,11 @@
 
     (defun nates-matlab-mode ()
       (mlint-minor-mode t)
+      (setq-local company-backends 
+                  '((company-files
+                     company-capf)
+                    (company-keywords 
+                     company-dabbrev-code)))
       (matlab-toggle-show-mlint-warnings))
 
     (defun nates-matlab-shell-mode ()
@@ -768,4 +770,11 @@
       (add-hook 'after-init-hook 'global-company-mode)
       :bind (("C-M-s-<tab>" . company-other-backend)))
 
+#+END_SRC
+* Source Control
+*** GIT
+#+BEGIN_SRC emacs-lisp
+(defun nates-git-ignore-mode ()
+  (add-to-list (make-local-variable 'company-backends) 'company-files))
+(add-to-list 'auto-mode-alist '("\\.gitignore\\'" . nates-git-ignore-mode))
 #+END_SRC

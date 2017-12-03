@@ -168,6 +168,8 @@
   (when window-system
     (load "natesminimap.el")
     (scroll-bar-mode -1)
+    (setq minimap-width-fraction 0.1)
+    (setq minimap-minimum-width 20)
     (minimap-mode)
     (defun minimap-toggle ()
       "Toggle minimap for current buffer."
@@ -315,9 +317,6 @@
        ;; Always return the anticipated result of compilation-exit-message-function
        (cons msg code))))
   (use-package cmake-mode)
-(defun nates-git-ignore-mode ()
-  (add-to-list (make-local-variable 'company-backends) 'company-files))
-(add-to-list 'auto-mode-alist '("\\.gitignore\\'" . nates-gitignore-mode))
   (use-package cc-mode
     :config
     (setq c-default-style
@@ -705,3 +704,6 @@
       (add-hook 'after-init-hook 'global-company-mode)
       :bind (("C-M-s-<tab>" . company-other-backend)))
 
+(defun nates-git-ignore-mode ()
+  (add-to-list (make-local-variable 'company-backends) 'company-files))
+(add-to-list 'auto-mode-alist '("\\.gitignore\\'" . nates-git-ignore-mode))
