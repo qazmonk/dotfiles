@@ -6,6 +6,6 @@ case $WIFI in
     B3BFL|MillerWiLife-*)
 	;;
     *)
-	fusermount -u ~/mnt
+	fusermount -ul ~/mnt
 	;;
 esac
