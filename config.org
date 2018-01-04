@@ -98,6 +98,8 @@
 
   (setq glyphless-char-display-control 
         (quote ((format-control . hex-code) (no-font . hex-code))))
+
+  (global-auto-revert-mode t)
 #+END_SRC
 ** Themes
 #+BEGIN_SRC emacs-lisp
