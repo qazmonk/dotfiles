@@ -151,6 +151,8 @@
 * Minor Modes
 #+BEGIN_SRC emacs-lisp
   (use-package help-fns+)
+  (use-package semantic)
+
   (use-package smex
     :config
     (smex-initialize)
@@ -163,7 +165,9 @@
     :bind (("C-c SPC" . ace-jump-mode)))
   (use-package image
     :config
-    (imagex-global-sticky-mode 1))
+    (imagex-global-sticky-mode 1)
+    :bind (("C-+" . imagex-sticky-zoom-in)
+           ("C--" . imagex-sticky-zoom-out)))
   (use-package neotree
     :bind ([f8] . neotree-toggle)
     :config
@@ -499,7 +503,12 @@
 #+END_SRC
 *** MATLAB
 #+BEGIN_SRC emacs-lisp
+  (use-package company-semantic
+    :config
+    (push 'matlab-mode company-semantic-modes))
+
   (use-package matlab
+    :load-path "~/Git/u-johnc32-matlab-emacs/"
     :config
     (setq mlint-programs
      (quote
@@ -522,14 +531,21 @@
                                                                       (line-number-at-pos)
                                                                       condition)))
 
+    (matlab-cedet-setup)
+    (push (cons 'matlab-mode 'semantic-default-matlab-setup)
+          semantic-new-buffer-setup-functions)
+
+    
     (defun nates-matlab-mode ()
       (mlint-minor-mode t)
       (setq-local company-backends 
-                  '((company-files
+                  '(company-semantic
+                    (company-files
                      company-capf)
                     (company-keywords 
                      company-dabbrev-code)))
       (matlab-toggle-show-mlint-warnings))
+
 
     (defun nates-matlab-shell-mode ()
       (setq-local company-backends 
