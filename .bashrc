@@ -48,7 +48,7 @@ case "$TERM" in
     "dumb")
         PS1="$ "
         ;;
-    xterm*|eterm*)
+    xterm*|eterm*|screen)
         prompt
         ;;
 esac
