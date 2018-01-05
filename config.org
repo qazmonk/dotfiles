@@ -100,6 +100,9 @@
         (quote ((format-control . hex-code) (no-font . hex-code))))
 
   (global-auto-revert-mode t)
+
+
+
 #+END_SRC
 ** Themes
 #+BEGIN_SRC emacs-lisp
@@ -155,6 +158,12 @@
   (use-package help-fns+)
   (use-package semantic)
 
+  (use-package linum
+    :config
+    (linum-mode)
+    (setq linum-format "%3i")
+    :demand t)
+
   (use-package smex
     :config
     (smex-initialize)
@@ -182,21 +191,21 @@
     :commands enable-paredit-mode)
   (use-package imenu-anywhere
     :bind (("M-i" . imenu-anywhere)))
-  ;;MINIMAP
-  (when window-system
-    (load "natesminimap.el")
-    (scroll-bar-mode -1)
-    (setq minimap-width-fraction 0.1)
-    (setq minimap-minimum-width 20)
-    (minimap-mode)
-    (defun minimap-toggle ()
-      "Toggle minimap for current buffer."
-      (interactive)
-      (if (not (get-buffer-window minimap-buffer-name))
-          (progn (minimap-create)
-                 (setf minimap-exists t))
-        (progn (minimap-kill)
-               (setf minimap-exists t)))))
+  ;; ;;MINIMAP
+  ;; (when window-system
+  ;;   (load "natesminimap.el")
+  ;;   (scroll-bar-mode -1)
+  ;;   (setq minimap-width-fraction 0.1)
+  ;;   (setq minimap-minimum-width 20)
+  ;;   (minimap-mode)
+  ;;   (defun minimap-toggle ()
+  ;;     "Toggle minimap for current buffer."
+  ;;     (interactive)
+  ;;     (if (not (get-buffer-window minimap-buffer-name))
+  ;;         (progn (minimap-create)
+  ;;                (setf minimap-exists t))
+  ;;       (progn (minimap-kill)
+  ;;              (setf minimap-exists t)))))
   (use-package ido
     :bind (("C-x C-f" . ido-find-file))
     :config
