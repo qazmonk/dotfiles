@@ -2,7 +2,7 @@
 	name = Nate Chodosh
 	email = nchodosh@gmail.com
 [credential]
-	helper = osxkeychain
+	helper = cache
 [core]
 	editor = emacs
 [push]
