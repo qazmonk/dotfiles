@@ -102,7 +102,9 @@
   (global-auto-revert-mode t)
 
 
-
+  ; Add convenient bindings for splitting windows
+  (global-set-key (kbd "C-x h") 'split-window-horizontally)
+  (global-set-key (kbd "C-x v") 'split-window-vertically)
 #+END_SRC
 ** Themes
 #+BEGIN_SRC emacs-lisp
