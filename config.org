@@ -161,10 +161,11 @@
   (use-package semantic)
 
   (use-package linum
+    :demand t
+    :init
+    (global-linum-mode)
     :config
-    (linum-mode)
-    (setq linum-format "%3i")
-    :demand t)
+    (setq linum-format "%3i"))
 
   (use-package smex
     :config
@@ -425,7 +426,7 @@
 #+END_SRC
 *** LISP
 #+BEGIN_SRC emacs-lisp
-    (setq inferior-lisp-program "/usr/local/bin/sbcl")
+  (setq inferior-lisp-program "/usr/local/bin/sbcl")
 
   (use-package slime
     :config
@@ -437,7 +438,8 @@
     (setq slime-use-autodoc-mode nil)
     (setq slime-company-major-modes
           (quote
-           (lisp-mode clojure-mode slime-repl-mode scheme-mode emacs-lisp-mode))))
+           (lisp-mode clojure-mode slime-repl-mode 
+                      scheme-mode emacs-lisp-mode))))
 
   (defvar electrify-return-match
     "[\]}\)\"]"
@@ -463,46 +465,46 @@
     (define-key company-active-map (kbd "\C-p") 'company-select-previous)
     (define-key company-active-map (kbd "\C-d") 'company-show-doc-buffer)
     (define-key company-active-map (kbd "M-.") 'company-show-location)
-    (setq-local company-backends '((company-files
-                                    company-capf)
+    (setq-local company-backends '(company-files
                                    (company-keywords 
                                     company-dabbrev-code))))
-  (defun nates-lisp-mode ()
-    (slime-mode)
-    (local-set-key (kbd "C-M-S-s-r")
-                   (lambda ()
-                     (interactive)
-                     (shell-command "osascript ~/Dropbox/AppleScript/refresh-preview.scpt")))
-    (set (make-local-variable 'lisp-indent-function)
-         'common-lisp-indent-function)
-    (nates-general-lisp-mode)
-    (slime-autodoc-mode))
 
-  (defun nates-inferior-lisp-mode ()
-    (define-key slime-repl-mode-map
-      (read-kbd-macro paredit-backward-delete-key) nil)
-    (eldoc-mode t)
-    (message "turning on eldoc-mode")
-    (local-set-key (kbd "C-M-S-s-r")
-                   (lambda ()
-                     (interactive)
-                     (shell-command "osascript ~/Dropbox/AppleScript/refresh-preview.scpt")))
-    (nates-general-lisp-mode))
+    (defun nates-lisp-mode ()
+      (slime-mode)
+      (local-set-key (kbd "C-M-S-s-r")
+                     (lambda ()
+                       (interactive)
+                       (shell-command "osascript ~/Dropbox/AppleScript/refresh-preview.scpt")))
+      (set (make-local-variable 'lisp-indent-function)
+           'common-lisp-indent-function)
+      (nates-general-lisp-mode)
+      (slime-autodoc-mode))
+
+    (defun nates-inferior-lisp-mode ()
+      (define-key slime-repl-mode-map
+        (read-kbd-macro paredit-backward-delete-key) nil)
+      (eldoc-mode t)
+      (message "turning on eldoc-mode")
+      (local-set-key (kbd "C-M-S-s-r")
+                     (lambda ()
+                       (interactive)
+                       (shell-command "osascript ~/Dropbox/AppleScript/refresh-preview.scpt")))
+      (nates-general-lisp-mode))
 
 
-  (defun nates-emacs-lisp-mode ()
-    (eldoc-mode t)
-    (nates-general-lisp-mode)
-    (setq-local company-backends
-                '((company-elisp company-capf)
-                  company-files
-                  (company-keywords 
-                   company-dabbrev-code))))
+    (defun nates-emacs-lisp-mode ()
+      (eldoc-mode t)
+      (nates-general-lisp-mode)
+      (setq-local company-backends
+                  '(company-elisp
+                    company-files
+                    (company-keywords 
+                     company-dabbrev-code))))
 
-  (add-hook 'lisp-mode-hook 'nates-lisp-mode)
+    (add-hook 'lisp-mode-hook 'nates-lisp-mode)
 
-  (add-hook 'emacs-lisp-mode-hook 'nates-emacs-lisp-mode)
-  (add-hook 'slime-repl-mode-hook 'nates-inferior-lisp-mode)
+    (add-hook 'emacs-lisp-mode-hook 'nates-emacs-lisp-mode)
+    (add-hook 'slime-repl-mode-hook 'nates-inferior-lisp-mode)
     (defun nates-slime ()
       (interactive)
       (save-excursion
@@ -519,8 +521,7 @@
 
     (eval-after-load 'slime
       `(define-key slime-mode-map (kbd "M-?") nil))
-
-    (require 'cl)
+  (require 'cl)
 
 #+END_SRC
 *** MATLAB
@@ -562,8 +563,7 @@
       (mlint-minor-mode t)
       (setq-local company-backends 
                   '(company-semantic
-                    (company-files
-                     company-capf)
+                    company-files
                     (company-keywords 
                      company-dabbrev-code)))
       (matlab-toggle-show-mlint-warnings))
@@ -571,8 +571,7 @@
 
     (defun nates-matlab-shell-mode ()
       (setq-local company-backends 
-                  '((company-files
-                     company-capf)
+                  '(company-files
                     company-matlab-shell
                     (company-keywords 
                      company-dabbrev-code))))
@@ -647,8 +646,7 @@
           (progn 
             (add-hook 'LaTeX-mode-hook (lambda ()
                                          (setq-local company-backends 
-                                                     '((company-files
-                                                        company-capf)
+                                                     '(company-files
                                                        (company-keywords 
                                                         company-dabbrev)))
                                          (auto-fill-mode -1)
@@ -797,8 +795,7 @@
       (setq company-dabbrev-downcase nil)
       (setq company-idle-delay 0.1)
       (setq company-backends
-            '((company-files
-               company-capf)
+            '(company-files
               (company-keywords 
                company-dabbrev-code)))
       (setq company-dabbrev-code-modes
