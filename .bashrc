@@ -9,8 +9,8 @@ fi
 
 export PATH=/usr/local/bin:~/dotfiles/bin:$PATH
 
-alias ls='ls -GFh'
-alias ll='ls -l'
+alias ls='ls -GFh --color=auto'
+alias ll='ls -l --color=auto'
 
 
 alias calc="~/dotfiles/cmds/calc.sh"

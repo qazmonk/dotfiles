@@ -9,3 +9,4 @@ alias set-vworkspaces='gsettings org.compiz.core:/org/compiz/profiles/unity/plug
 alias restart-wifi='sudo systemctl restart network-manager'
 alias unmntbx='fusermount -u ~/mnt'
 
+alias sound='pavucontrol'
