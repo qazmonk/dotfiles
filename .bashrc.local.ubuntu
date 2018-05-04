@@ -10,3 +10,14 @@ alias restart-wifi='sudo systemctl restart network-manager'
 alias unmntbx='fusermount -u ~/mnt'
 
 alias sound='pavucontrol'
+
+alias autosshfs='sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3'
+
+# caps -> control
+setxkbmap us -option ctrl:nocaps
+
+# turn off tap to click
+synclient MaxTapTime=0
+
+# log dbus adress
+~/dotfiles/cmds/setup_dbus_address.sh

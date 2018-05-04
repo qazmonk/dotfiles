@@ -421,8 +421,14 @@
     (remove-hook 'python-mode-hook 'wisent-python-default-setup))
   (use-package python
     :config
+    (defun python-align-args (beg end)
+                  (interactive "r")
+                  (align-regexp beg end "\\(\\s-*\\)\\(type\\|action\\|choices\\)[^\"]*?=" 1 1 t)
+                  (align-regexp beg end "\\(\\s-*\\)default[^\"]*=" 1 1 t)
+                  (align-regexp beg end "\\(\\s-*\\)help[^\"]*=" 1 1 t))
     (add-hook 'python-mode-hook 
-              (lambda () (setq imenu-create-index-function 'python-imenu-create-index))))
+              (lambda () 
+                (setq imenu-create-index-function 'python-imenu-create-index))))
 #+END_SRC
 *** LISP
 #+BEGIN_SRC emacs-lisp
@@ -455,6 +461,19 @@
           (save-excursion (newline-and-indent)))
       (newline arg)
       (indent-according-to-mode)))
+
+  (defun nates-slime-restart ()
+    (interactive)
+    (slime-quit-lisp)
+    (kill-buffer "*inferior-lisp*")
+    (slime))
+
+  (defun nates-slime-restart-eval-buffer ()
+    (interactive)
+    (nates-slime-restart)
+    (slime-eval-buffer))
+
+
   (defun nates-general-lisp-mode ()
     (company-mode)
     (enable-paredit-mode)
@@ -603,6 +622,7 @@
 ** LATEX
 #+BEGIN_SRC emacs-lisp
   (use-package company-auctex)
+
   (use-package tex
     :ensure auctex
     :config
@@ -669,7 +689,12 @@
       (setq TeX-source-correlate-mode t
             TeX-source-correlate-start-server t)
       
-      (setcar (cdr (assoc 'output-pdf TeX-view-program-selection)) "Okular"))
+      (setcar (cdr (assoc 'output-pdf TeX-view-program-selection)) "Okular")
+      
+      (add-hook 'LaTeX-mode-hook
+                (lambda ()
+                  (company-auctex-init))))
+
 
 #+END_SRC
 ** ORG
