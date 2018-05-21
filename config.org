@@ -108,47 +108,53 @@
 #+END_SRC
 ** Themes
 #+BEGIN_SRC emacs-lisp
+  (use-package sublime-themes
+    :ensure t)
+
   (use-package custom
+    :after sublime-themes
     :config
-    (setq custom-enabled-themes (quote (sanityinc-tomorrow-night)))
-    (setq custom-safe-themes
-          (quote
-           ("e0d42a58c84161a0744ceab595370cbe290949968ab62273aed6212df0ea94b4"
-            "3cd28471e80be3bd2657ca3f03fbb2884ab669662271794360866ab60b6cb6e6"
-            "3cc2385c39257fed66238921602d8104d8fd6266ad88a006d0a4325336f5ee02"
-            "e9776d12e4ccb722a2a732c6e80423331bcb93f02e089ba2a4b02e85de1cf00e"
-            "72a81c54c97b9e5efcc3ea214382615649ebb539cb4f2fe3a46cd12af72c7607"
-            "58c6711a3b568437bab07a30385d34aacf64156cc5137ea20e799984f4227265"
-            "3d5ef3d7ed58c9ad321f05360ad8a6b24585b9c49abcee67bdcbb0fe583a6950"
-            "b3775ba758e7d31f3bb849e7c9e48ff60929a792961a2d536edec8f68c671ca5"
-            "9b59e147dbbde5e638ea1cde5ec0a358d5f269d27bd2b893a0947c4a867e14c1"
-            "8db4b03b9ae654d4a57804286eb3e332725c84d7cdab38463cb6b97d5762ad26"
-            "1e3b2c9e7e84bb886739604eae91a9afbdfb2e269936ec5dd4a9d3b7a943af7f"
-            "c4465c56ee0cac519dd6ab6249c7fd5bb2c7f7f78ba2875d28a50d3c20a59473"
-            "82d2cac368ccdec2fcc7573f24c3f79654b78bf133096f9b40c20d97ec1d8016"
-            "1b8d67b43ff1723960eb5e0cba512a2c7a2ad544ddb2533a90101fd1852b426e"
-            "bb08c73af94ee74453c90422485b29e5643b73b05e8de029a6909af6a3fb3f58"
-            "06f0b439b62164c6f8f84fdda32b62fb50b6d00e8b01c2208e55543a6337433a"
-            "628278136f88aa1a151bb2d6c8a86bf2b7631fbea5f0f76cba2a0079cd910f7d"
-            "68d36308fc6e7395f7e6355f92c1dd9029c7a672cbecf8048e2933a053cf27e6"
-            "3dafeadb813a33031848dfebfa0928e37e7a3c18efefa10f3e9f48d1993598d3"
-            "05c3bc4eb1219953a4f182e10de1f7466d28987f48d647c01f1f0037ff35ab9a" 
-            default)))
-    (setq custom-theme-load-path
-          (quote
-           ("/Users/Nate/.emacs.d/elpa/color-theme-sanityinc-tomorrow-20160413.150/"
-            "/Users/Nate/.emacs.d/elpa/monokai-theme-20160419.1444/"
-            "/Users/Nate/.emacs.d/elpa/zenburn-theme-20160416.1011/"
-            custom-theme-directory
-            "/Users/Nate/.emacs.d/emacs-color-theme-solarized"
-            "/home/nate/.emacs.d/emacs-color-theme-solarized"
-            "/home/nate/.emacs.d/themes")))
+    ;; (setq custom-enabled-themes (quote (sanityinc-tomorrow-night)))
+    ;; (setq custom-safe-themes
+    ;;       (quote
+    ;;        ("e0d42a58c84161a0744ceab595370cbe290949968ab62273aed6212df0ea94b4"
+    ;;         "3cd28471e80be3bd2657ca3f03fbb2884ab669662271794360866ab60b6cb6e6"
+    ;;         "3cc2385c39257fed66238921602d8104d8fd6266ad88a006d0a4325336f5ee02"
+    ;;         "e9776d12e4ccb722a2a732c6e80423331bcb93f02e089ba2a4b02e85de1cf00e"
+    ;;         "72a81c54c97b9e5efcc3ea214382615649ebb539cb4f2fe3a46cd12af72c7607"
+    ;;         "58c6711a3b568437bab07a30385d34aacf64156cc5137ea20e799984f4227265"
+    ;;         "3d5ef3d7ed58c9ad321f05360ad8a6b24585b9c49abcee67bdcbb0fe583a6950"
+    ;;         "b3775ba758e7d31f3bb849e7c9e48ff60929a792961a2d536edec8f68c671ca5"
+    ;;         "9b59e147dbbde5e638ea1cde5ec0a358d5f269d27bd2b893a0947c4a867e14c1"
+    ;;         "8db4b03b9ae654d4a57804286eb3e332725c84d7cdab38463cb6b97d5762ad26"
+    ;;         "1e3b2c9e7e84bb886739604eae91a9afbdfb2e269936ec5dd4a9d3b7a943af7f"
+    ;;         "c4465c56ee0cac519dd6ab6249c7fd5bb2c7f7f78ba2875d28a50d3c20a59473"
+    ;;         "82d2cac368ccdec2fcc7573f24c3f79654b78bf133096f9b40c20d97ec1d8016"
+    ;;         "1b8d67b43ff1723960eb5e0cba512a2c7a2ad544ddb2533a90101fd1852b426e"
+    ;;         "bb08c73af94ee74453c90422485b29e5643b73b05e8de029a6909af6a3fb3f58"
+    ;;         "06f0b439b62164c6f8f84fdda32b62fb50b6d00e8b01c2208e55543a6337433a"
+    ;;         "628278136f88aa1a151bb2d6c8a86bf2b7631fbea5f0f76cba2a0079cd910f7d"
+    ;;         "68d36308fc6e7395f7e6355f92c1dd9029c7a672cbecf8048e2933a053cf27e6"
+    ;;         "3dafeadb813a33031848dfebfa0928e37e7a3c18efefa10f3e9f48d1993598d3"
+    ;;         "05c3bc4eb1219953a4f182e10de1f7466d28987f48d647c01f1f0037ff35ab9a" 
+    ;;         default)))
+    ;; (setq custom-theme-load-path
+    ;;       (quote
+    ;;        ("~/.emacs.d/themes"
+    ;;         "/Users/Nate/.emacs.d/elpa/color-theme-sanityinc-tomorrow-20160413.150/"
+    ;;         "/Users/Nate/.emacs.d/elpa/monokai-theme-20160419.1444/"
+    ;;         "/Users/Nate/.emacs.d/elpa/zenburn-theme-20160416.1011/"
+    ;;         custom-theme-directory
+    ;;         "/Users/Nate/.emacs.d/emacs-color-theme-solarized"
+    ;;         "/home/nate/.emacs.d/emacs-color-theme-solarized"
+    ;;         "/home/nate/.emacs.d/themes")))
+
     
     (if (display-graphic-p) 
         (progn
           (dolist (theme custom-enabled-themes)
             (disable-theme theme))
-          (load-theme 'brin))
+          (load-theme 'wilson t))
       (progn 
         (dolist (theme custom-enabled-themes)
           (disable-theme theme))      
@@ -157,8 +163,9 @@
 #+END_SRC
 * Minor Modes
 #+BEGIN_SRC emacs-lisp
-  (use-package help-fns+)
-  (use-package semantic)
+  (require 'help-fns+)
+  (use-package semantic
+    :ensure t)
 
   (use-package linum
     :demand t
@@ -168,6 +175,7 @@
     (setq linum-format "%3i"))
 
   (use-package smex
+    :ensure t
     :config
     (smex-initialize)
     (global-set-key (kbd "C-c C-c M-x") 'execute-extended-command) ; this is the old M-x
@@ -177,19 +185,21 @@
     :config
     (setq ace-jump-mode-scope 'window)
     :bind (("C-c SPC" . ace-jump-mode)))
-  (use-package image
+  (use-package image+
     :config
     (imagex-global-sticky-mode 1)
     :bind (("C-+" . imagex-sticky-zoom-in)
            ("C--" . imagex-sticky-zoom-out)))
   (use-package neotree
+    :ensure t
     :bind ([f8] . neotree-toggle)
     :config
     (setq neo-theme (quote nerd)))
 
   (use-package multi-scratch
-    :load-path "~/.emacs.d/multi-scratch/")
+    :load-path "~/.emacs.d/lisp/multi-scratch.el")
   (use-package paredit
+    :ensure t
     :load-path "~/.emacs.d/paredit/"
     :commands enable-paredit-mode)
   (use-package imenu-anywhere
@@ -216,6 +226,7 @@
   ;;       (progn (minimap-kill)
   ;;              (setf minimap-exists t)))))
   (use-package ido
+    :ensure t
     :bind (("C-x C-f" . ido-find-file))
     :config
     (ido-mode t)
@@ -223,6 +234,7 @@
     (setq ido-mode (quote both))
     (setq ido-enable-flex-matching t))
   (use-package ido-completing-read+
+    :ensure t
     :config
     (require 'ido)
     (ido-ubiquitous-mode t)
@@ -247,6 +259,7 @@
     (define-auto-insert "\\.tex$" "standard.tex"))
 
   (use-package highlight-parentheses
+    :ensure t
     :config
     (setq hl-paren-colors
           (quote
@@ -255,6 +268,7 @@
     :config
     (setq reb-re-syntax (quote string)))
   (use-package beacon
+    :ensure t
     :if window-system
     :config
     (setf beacon-color (face-background 'cursor))
@@ -263,8 +277,10 @@
             (beacon-blink)))
     (beacon-mode t))
   (use-package undo-tree
-    :config
-    (global-undo-tree-mode t))
+    :ensure t
+    :demand t)
+  (eval-after-load 'undo-tree
+    (global-undo-tree-mode))
 #+End_SRC
 * Major Modes
 ** Shells 
@@ -368,7 +384,7 @@
 #+END_SRC
 *** CMAKE
 #+BEGIN_SRC emacs-lisp
-  (use-package cmake-mode)
+  (use-package cmake-mode :ensure t)
 #+END_SRC
 
 *** C++
@@ -433,8 +449,10 @@
 *** LISP
 #+BEGIN_SRC emacs-lisp
   (setq inferior-lisp-program "/usr/local/bin/sbcl")
-
+  (use-package slime-company
+    :ensure t)
   (use-package slime
+    :ensure t
     :config
     (require 'slime-autoloads)
     (add-to-list 'slime-contribs 'inferior-slime)
@@ -550,7 +568,7 @@
     (push 'matlab-mode company-semantic-modes))
 
   (use-package matlab
-    :load-path "~/Git/u-johnc32-matlab-emacs/"
+    :load-path "~/.emacs.d/lisp/matlab-emacs-src/"
     :config
     (setq mlint-programs
      (quote
@@ -573,9 +591,9 @@
                                                                       (line-number-at-pos)
                                                                       condition)))
 
-    (matlab-cedet-setup)
-    (push (cons 'matlab-mode 'semantic-default-matlab-setup)
-          semantic-new-buffer-setup-functions)
+    ;;(matlab-cedet-setup)
+    ;; (push (cons 'matlab-mode 'semantic-default-matlab-setup)
+    ;;       semantic-new-buffer-setup-functions)
 
     
     (defun nates-matlab-mode ()
@@ -613,15 +631,17 @@
 #+END_SRC
 *** HTML
 #+BEGIN_SRC emacs-lisp
-  (use-package tagedit
-    :config
-    (eval-after-load "sgml-mode"
-      '(progn (tagedit-add-paredit-like-keybindings)
-              (add-hook 'html-mode-hook (lambda () (tagedit-mode 1))))))
+    (use-package tagedit
+      :ensure t
+      :config
+      (eval-after-load "sgml-mode"
+        '(progn (tagedit-add-paredit-like-keybindings)
+                (add-hook 'html-mode-hook (lambda () (tagedit-mode 1))))))
 #+END_SRC
 ** LATEX
 #+BEGIN_SRC emacs-lisp
-  (use-package company-auctex)
+  (use-package company-auctex
+    :ensure t)
 
   (use-package tex
     :ensure auctex
@@ -806,10 +826,11 @@
 #+END_SRC
 ** MAGIT
 #+BEGIN_SRC emacs-lisp
-    (use-package magit
-      :config
-      (setq magit-push-arguments nil)
-      (setq magit-diff-use-overlays nil))
+  (use-package magit
+    :ensure t
+    :config
+    (setq magit-push-arguments nil)
+    (setq magit-diff-use-overlays nil))
 #+END_SRC
 * Completion
 ** Company mode
