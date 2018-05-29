@@ -55,3 +55,5 @@ esac
 
 
 
+export PATH="/home/nchodosh/python/bin:$PATH"
+source /home/nchodosh/av/argo/scripts/set_argo_paths.sh
