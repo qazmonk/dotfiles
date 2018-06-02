@@ -492,11 +492,6 @@
     (kill-buffer "*inferior-lisp*")
     (slime))
 
-  (defun nates-slime-restart-eval-buffer ()
-    (interactive)
-    (nates-slime-restart)
-    (slime-eval-buffer))
-
 
   (defun nates-general-lisp-mode ()
     (company-mode)
@@ -830,15 +825,20 @@
     (add-hook 'org-mode-hook 'nates-org-mode-hook)
     (setq org-todo-keywords '((sequence "TODO(t)" "IN-PROGRESS(i!)" "|" "DONE(d!)")))
 
+  (use-package pdf-tools
+    :ensure t
+    :config
+    (pdf-tools-install))
+
+  (use-package interleave
+    :ensure t)
   (use-package org-ref
     :ensure t
-    :demand t
     :init
     (setf org-ref-bibliography-notes "~/Dropbox/LuceyResearch/articles.org"
           org-ref-notes-directory "~/Dropbox/LuceyResearch/notes/"
           org-ref-default-bibliography `("~/Dropbox/LuceyResearch/articles.bib")
-          org-ref-pdf-directory "~/Dropbox/LuceyResearch/pdfs/")
-    (pdf-tools-install))
+          org-ref-pdf-directory "~/Dropbox/LuceyResearch/pdfs/"))
          
 #+END_SRC
 ** MAGIT
