@@ -163,125 +163,127 @@
 #+END_SRC
 * Minor Modes
 #+BEGIN_SRC emacs-lisp
-    (require 'help-fns+)
-    (use-package semantic
-      :ensure t)
+  (require 'help-fns+)
+  (use-package semantic
+    :ensure t)
 
 
-    (use-package linum
-      :init
-      (add-hook 'prog-mode-hook 'linum-mode)
-      :config
-      (setf linum-format "%3i"))
+  (use-package linum
+    :init
+    (add-hook 'prog-mode-hook 'linum-mode)
+    :config
+    (setf linum-format "%3i"))
 
 
-    (use-package smex
-      :ensure t
-      :config
-      (smex-initialize)
-      (global-set-key (kbd "C-c C-c M-x") 'execute-extended-command) ; this is the old M-x
-      :bind (("M-x" . smex)
-             ("M-X" . smex-major-mode-commands)))
-    (use-package ace-jump-mode
-      :config
-      (setq ace-jump-mode-scope 'window)
-      :bind (("C-c SPC" . ace-jump-mode)))
-    (use-package image+
-      :config
-      (imagex-global-sticky-mode 1)
-      :bind (("C-+" . imagex-sticky-zoom-in)
-             ("C--" . imagex-sticky-zoom-out)))
-    (use-package neotree
-      :ensure t
-      :bind ([f8] . neotree-toggle)
-      :config
-      (setq neo-theme (quote nerd)))
+  (use-package smex
+    :ensure t
+    :config
+    (smex-initialize)
+    (global-set-key (kbd "C-c C-c M-x") 'execute-extended-command) ; this is the old M-x
+    :bind (("M-x" . smex)
+           ("M-X" . smex-major-mode-commands)))
+  (use-package ace-jump-mode
+    :ensure t
+    :config
+    (setq ace-jump-mode-scope 'window)
+    :bind (("C-c SPC" . ace-jump-mode)))
+  (use-package image+
+    :config
+    (imagex-global-sticky-mode 1)
+    :bind (("C-+" . imagex-sticky-zoom-in)
+           ("C--" . imagex-sticky-zoom-out)))
+  (use-package neotree
+    :ensure t
+    :bind ([f8] . neotree-toggle)
+    :config
+    (setq neo-theme (quote nerd)))
 
-    (use-package multi-scratch
-      :load-path "~/.emacs.d/lisp/multi-scratch.el")
-    (use-package paredit
-      :ensure t
-      :load-path "~/.emacs.d/paredit/"
-      :commands enable-paredit-mode)
-    (use-package imenu-anywhere
-  :ensure t
-      :bind (("M-i" . imenu-anywhere))
-      :config
-      (defun my-merge-imenu ()
-        (interactive)
-        (let ((mode-imenu (imenu-default-create-index-function))
-              (custom-imenu (imenu--generic-function imenu-generic-expression)))
-          (append mode-imenu custom-imenu))))
-    ;; ;;MINIMAP
-    ;; (when window-system
-    ;;   (load "natesminimap.el")
-    ;;   (scroll-bar-mode -1)
-    ;;   (setq minimap-width-fraction 0.1)
-    ;;   (setq minimap-minimum-width 20)
-    ;;   (minimap-mode)
-    ;;   (defun minimap-toggle ()
-    ;;     "Toggle minimap for current buffer."
-    ;;     (interactive)
-    ;;     (if (not (get-buffer-window minimap-buffer-name))
-    ;;         (progn (minimap-create)
-    ;;                (setf minimap-exists t))
-    ;;       (progn (minimap-kill)
-    ;;              (setf minimap-exists t)))))
-    (use-package ido
-      :ensure t
-      :bind (("C-x C-f" . ido-find-file))
-      :config
-      (ido-mode t)
-      (ido-everywhere)
-      (setq ido-mode (quote both))
-      (setq ido-enable-flex-matching t))
-    (use-package ido-completing-read+
-      :ensure t
-      :config
-      (require 'ido)
-      (ido-ubiquitous-mode t)
-      (put 'dired-do-rename 'ido 'find-file)
-      (put 'dired-do-copy 'ido 'find-file))
-    (use-package flyspell
-      :config
-      (add-hook 'flyspell-mode-hook (lambda ()
-                                      (define-key flyspell-mode-map (kbd "M-<f1>")
-                                        #'flyspell-check-previous-highlighted-word))))
+  (use-package multi-scratch
+    :load-path "~/.emacs.d/lisp/multi-scratch.el")
+  (use-package paredit
+    :ensure t
+    :load-path "~/.emacs.d/paredit/"
+    :commands enable-paredit-mode)
+  (use-package imenu-anywhere
+    :ensure t
+    :bind (("M-i" . imenu-anywhere))
+    :config
+    (defun my-merge-imenu ()
+      (interactive)
+      (let ((mode-imenu (imenu-default-create-index-function))
+            (custom-imenu (imenu--generic-function imenu-generic-expression)))
+        (append mode-imenu custom-imenu))))
+  ;; ;;MINIMAP
+  ;; (when window-system
+  ;;   (load "natesminimap.el")
+  ;;   (scroll-bar-mode -1)
+  ;;   (setq minimap-width-fraction 0.1)
+  ;;   (setq minimap-minimum-width 20)
+  ;;   (minimap-mode)
+  ;;   (defun minimap-toggle ()
+  ;;     "Toggle minimap for current buffer."
+  ;;     (interactive)
+  ;;     (if (not (get-buffer-window minimap-buffer-name))
+  ;;         (progn (minimap-create)
+  ;;                (setf minimap-exists t))
+  ;;       (progn (minimap-kill)
+  ;;              (setf minimap-exists t)))))
+  (use-package ido
+    :ensure t
+    :bind (("C-x C-f" . ido-find-file))
+    :config
+    (ido-mode t)
+    (ido-everywhere)
+    (setq ido-mode (quote both))
+    (setq ido-enable-flex-matching t))
+  (use-package ido-completing-read+
+    :ensure t
+    :config
+    (require 'ido)
+    (ido-ubiquitous-mode t)
+    (put 'dired-do-rename 'ido 'find-file)
+    (put 'dired-do-copy 'ido 'find-file))
+  (use-package flyspell
+    :config
+    (add-hook 'flyspell-mode-hook (lambda ()
+                                    (define-key flyspell-mode-map (kbd "M-<f1>")
+                                      #'flyspell-check-previous-highlighted-word))))
 
-    ;; adaptive-fill-mode
-    (setq adaptive-fill-mode t)
+  ;; adaptive-fill-mode
+  (setq adaptive-fill-mode t)
 
-    (use-package autoinsert
-      :config
-      (auto-insert-mode)
-      (defun autoinsert-yas-expand ()
-        "Replace text in yasnipped template."
-        (yas-expand-snippet (buffer-string) (point-min) (point-max)))
-      (setq auto-insert-directory "~/dotfiles/autoinserts/")
-      (define-auto-insert "\\.tex$" "standard.tex"))
+  (use-package autoinsert
+    :config
+    (auto-insert-mode)
+    (defun autoinsert-yas-expand ()
+      "Replace text in yasnipped template."
+      (yas-expand-snippet (buffer-string) (point-min) (point-max)))
+    (setq auto-insert-directory "~/dotfiles/autoinserts/")
+    (define-auto-insert "\\.tex$" "standard.tex"))
 
-    (use-package highlight-parentheses
-      :ensure t
-      :config
-      (setq hl-paren-colors
-            (quote
-             ("PaleGreen1" "SpringGreen1" "SpringGreen3" "SpringGreen4"))))
-    (use-package re-builder
-      :config
-      (setq reb-re-syntax (quote string)))
-    (use-package beacon
-      :ensure t
-      :if window-system
-      :config
-      (setf beacon-color (face-background 'cursor))
-      (setq ring-bell-function 
-            (lambda ()
-              (beacon-blink)))
-      (beacon-mode t))
-    (use-package undo-tree
-      :ensure t)
-    (global-undo-tree-mode 1)
-    (setf undo-tree-auto-save-history t)
+  (use-package highlight-parentheses
+    :ensure t
+    :config
+    (setq hl-paren-colors
+          (quote
+           ("PaleGreen1" "SpringGreen1" "SpringGreen3" "SpringGreen4"))))
+  (use-package re-builder
+    :config
+    (setq reb-re-syntax (quote string)))
+  (use-package beacon
+    :ensure t
+    :if window-system
+    :config
+    (setf beacon-color (face-background 'cursor))
+    (setq ring-bell-function 
+          (lambda ()
+            (beacon-blink)))
+    (beacon-mode t))
+  (use-package undo-tree
+    :ensure t)
+  (global-undo-tree-mode 1)
+  (setf undo-tree-auto-save-history t)
+  (setf undo-tree-history-directory-alist '(("*" . "/tmp/")))
 
 
 #+End_SRC
@@ -432,7 +434,8 @@
     (add-hook 'c-mode-common-hook 'my-c-mode-common-hook)
 
     (add-to-list 'auto-mode-alist '("\\.h\\'" . c++-mode))
-    (add-to-list 'auto-mode-alist '("\\.tpp\\'" . c++-mode)))
+    (add-to-list 'auto-mode-alist '("\\.tpp\\'" . c++-mode))
+    (add-to-list 'auto-mode-alist '("\\.cc\\'" . c++-mode)))
 #+END_SRC
 *** PYTHON
 #+BEGIN_SRC emacs-lisp
@@ -718,7 +721,7 @@
                 (lambda ()
                   (company-auctex-init))))
 
-
+  (use-package font-latex)
 #+END_SRC
 ** ORG
 #+BEGIN_SRC emacs-lisp

@@ -45,17 +45,4 @@
     (my-tangle-config-org))
 (load "~/dotfiles/config.el")
 
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   (quote
-    (auctex-latexmk use-package undo-tree tagedit sublime-themes smex slime-company paredit org-ref neotree magit interleave imenu-anywhere ido-completing-read+ highlight-parentheses company-auctex cmake-mode beacon))))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
+
