@@ -24,6 +24,10 @@
 #+END_SRC
 ** Global Configuration
 #+BEGIN_SRC emacs-lisp
+  (use-package backup-each-save
+    :init
+    (add-hook 'after-save-hook 'backup-each-save))
+
   (when window-system 
     (when tool-bar-mode
       (tool-bar-mode -1)))
@@ -36,21 +40,8 @@
           (emacs-lisp-docstring-fill-column t))
       (fill-paragraph nil region)))
   (define-key global-map "\M-Q" 'unfill-paragraph)
-  ;;dont store backups in the same directory as files and periodically delete them as well
-  (let ((temporary-file-directory "/tmp/"))
-    (setq backup-directory-alist
-          `((".*" . ,temporary-file-directory)))
-    (setq auto-save-file-name-transforms
-          `((".*" , temporary-file-directory t)))
-    (message "Deleting old backup files...")
-    (let ((week (* 60 60 24 7))
-          (current (float-time (current-time))))
-      (dolist (file (directory-files temporary-file-directory t))
-        (when (and (backup-file-name-p file)
-                   (> (- current (float-time (nth 5 (file-attributes file))))
-                      week))
-          (message "%s" file)
-          (delete-file file)))))
+
+
 
   ;;change keys for mac keyboard
   (when (equal system-type 'darwin)
@@ -228,21 +219,44 @@
   ;;                (setf minimap-exists t))
   ;;       (progn (minimap-kill)
   ;;              (setf minimap-exists t)))))
-  (use-package ido
+  ;; (use-package ido
+  ;;   :ensure t
+  ;;   :bind (("C-x C-f" . ido-find-file))
+  ;;   :config
+  ;;   (ido-mode t)
+  ;;   (ido-everywhere)
+  ;;   (setq ido-mode (quote both))
+  ;;   (setq ido-enable-flex-matching t))
+  ;; (use-package ido-completing-read+
+  ;;   :ensure t
+  ;;   :config
+  ;;   (require 'ido)
+  ;;   (ido-ubiquitous-mode t)
+  ;;   (put 'dired-do-rename 'ido 'find-file)
+  ;;   (put 'dired-do-copy 'ido 'find-file))
+
+  (use-package ivy
     :ensure t
-    :bind (("C-x C-f" . ido-find-file))
+    :init
+    (ivy-mode)
     :config
-    (ido-mode t)
-    (ido-everywhere)
-    (setq ido-mode (quote both))
-    (setq ido-enable-flex-matching t))
-  (use-package ido-completing-read+
-    :ensure t
-    :config
-    (require 'ido)
-    (ido-ubiquitous-mode t)
-    (put 'dired-do-rename 'ido 'find-file)
-    (put 'dired-do-copy 'ido 'find-file))
+    (setq ivy-use-virtual-vuffers t)
+    (setq ivy-count-format "(%d/%d) ")
+    :bind
+    (("C-s" . swiper)
+     ("M-x" . counsel-M-x)
+     ("C-x C-f" . counsel-find-file)
+     ("<f1> f" . counsel-describe-function)
+     ("<f1> v" . counsel-describe-variable)
+     ("<f1> l" . counsel-find-library)
+     ("<f2> i" . counsel-info-lookup-symbol)
+     ("<f2> u" . counsel-unicode-char))
+    
+    ("C-c g" . counsel-git)
+    ("C-c j" . counsel-git-grep)
+    ("C-c k" . counsel-ag)
+    ("C-x l" . counsel-locate)
+    ("C-S-o" . counsel-rhythmbox))
   (use-package flyspell
     :config
     (add-hook 'flyspell-mode-hook (lambda ()
@@ -283,9 +297,7 @@
     :ensure t)
   (global-undo-tree-mode 1)
   (setf undo-tree-auto-save-history t)
-  (setf undo-tree-history-directory-alist '(("*" . "/tmp/")))
-
-
+  (setf undo-tree-history-directory-alist '((".*" . "~/.emacs.d/undo-tree-history/")))
 #+End_SRC
 * Major Modes
 ** Shells 
