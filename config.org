@@ -65,10 +65,10 @@
 
   (global-set-key (kbd "C-'") 'set-mark-command)
 
-  (global-set-key (kbd "<C-right>") 'windmove-right)
-  (global-set-key (kbd "<C-left>") 'windmove-left)
-  (global-set-key (kbd "<C-up>") 'windmove-up)
-  (global-set-key (kbd "<C-down>") 'windmove-down)
+  (global-set-key (kbd "<s-right>") 'windmove-right)
+  (global-set-key (kbd "<s-left>") 'windmove-left)
+  (global-set-key (kbd "<s-up>") 'windmove-up)
+  (global-set-key (kbd "<s-down>") 'windmove-down)
 
   (defun push-mark-no-activate ()
     "Pushes `point' to `mark-ring' and does not activate the region
