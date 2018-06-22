@@ -26,7 +26,9 @@
 #+BEGIN_SRC emacs-lisp
   (use-package backup-each-save
     :init
-    (add-hook 'after-save-hook 'backup-each-save))
+    (add-hook 'after-save-hook 'backup-each-save)
+    :config
+    (setq make-backup-files nil))
 
   (when window-system 
     (when tool-bar-mode
@@ -312,6 +314,8 @@
     :config
     (setq term-buffer-maximum-size 0))
 
+  (use-package multi-term
+    :config (setq multi-term-program "/bin/bash"))
 #+END_SRC
 *** eshell
 #+BEGIN_SRC emacs-lisp
@@ -465,8 +469,7 @@
                 (setq imenu-create-index-function 'python-imenu-create-index)))
     (defun python3-shell ()
       (interactive)
-      (run-python "python3"))
-    )
+      (run-python "python3" t t)))
 #+END_SRC
 *** LISP
 #+BEGIN_SRC emacs-lisp
