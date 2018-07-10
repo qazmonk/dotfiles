@@ -15,6 +15,7 @@
          (url (concat (if no-ssl "http" "https") "://melpa.org/packages/")))
     (add-to-list 'package-archives (cons "melpa" url) t))
   (add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
+  (add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/"))
   (when (< emacs-major-version 24)
     ;; For important compatibility libraries like cl-lib
     (add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
@@ -466,10 +467,28 @@
                   (align-regexp beg end "\\(\\s-*\\)help[^\"]*=" 1 1 t))
     (add-hook 'python-mode-hook 
               (lambda () 
-                (setq imenu-create-index-function 'python-imenu-create-index)))
+                (anaconda-mode)
+                (highlight-indent-guides-mode)
+                (setq imenu-create-index-function 'python-imenu-create-index)
+                
+                
+                ))
     (defun python3-shell ()
       (interactive)
       (run-python "python3" t t)))
+
+  (use-package anaconda-mode
+    :ensure t
+    :bind ("C-c C-d" . anaconda-mode-show-doc)
+    :config
+    (add-hook 'python-mode-hook 
+              (lambda () 
+                (setq company-backends '((company-anaconda :with company-capf) company-files)))))
+
+  (use-package highlight-indent-guides
+    :ensure t
+    :config
+    (setq highlight-indent-guides-method 'character))
 #+END_SRC
 *** LISP
 #+BEGIN_SRC emacs-lisp
@@ -590,6 +609,7 @@
   (use-package matlab
     :load-path "~/.emacs.d/lisp/matlab-emacs-src/"
     :config
+    (require 'matlab-load)
     (setq mlint-programs
      (quote
       ("/Applications/MATLAB_R2015b.app/bin/maci64/mlint" "/usr/local/MATLAB/R2017a/bin/glnxa64/mlint")))

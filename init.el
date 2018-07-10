@@ -4,6 +4,7 @@
 ;; just comment it out by adding a semicolon to the start of the line.
 ;; You may delete these explanatory comments.
 (package-initialize)
+(setq custom-file "~/dotfiles/custom.el") ; move all customization to this file
 
 (defun my-tangle-config-org ()
   "This function will write all source blocks from =config.org= into
@@ -44,6 +45,4 @@
 (when (file-newer-than-file-p "~/dotfiles/config.org" "~/dotfiles/config.el")
     (my-tangle-config-org))
 (load "~/dotfiles/config.el")
-
-
-
+(load custom-file)
