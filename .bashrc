@@ -56,4 +56,6 @@ esac
 
 
 export PATH="/home/nchodosh/python/bin:$PATH"
-source /home/nchodosh/av/argo/scripts/set_argo_paths.sh
+
+# added by Anaconda3 installer
+export PATH="/home/nate/anaconda3/bin:$PATH"

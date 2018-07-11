@@ -459,6 +459,7 @@
   (eval-after-load "semantic"
     (remove-hook 'python-mode-hook 'wisent-python-default-setup))
   (use-package python
+    :demand t
     :config
     (defun python-align-args (beg end)
                   (interactive "r")
@@ -467,23 +468,22 @@
                   (align-regexp beg end "\\(\\s-*\\)help[^\"]*=" 1 1 t))
     (add-hook 'python-mode-hook 
               (lambda () 
-                (anaconda-mode)
                 (highlight-indent-guides-mode)
-                (setq imenu-create-index-function 'python-imenu-create-index)
-                
-                
-                ))
+                (setq imenu-create-index-function 'python-imenu-create-index)))
     (defun python3-shell ()
       (interactive)
       (run-python "python3" t t)))
 
-  (use-package anaconda-mode
+  (use-package pyenv-mode
     :ensure t
-    :bind ("C-c C-d" . anaconda-mode-show-doc)
-    :config
+    :init (pyenv-mode))
+
+  (use-package elpy
+    :ensure t
+    :init
     (add-hook 'python-mode-hook 
               (lambda () 
-                (setq company-backends '((company-anaconda :with company-capf) company-files)))))
+                (elpy-enable))))
 
   (use-package highlight-indent-guides
     :ensure t
@@ -609,7 +609,7 @@
   (use-package matlab
     :load-path "~/.emacs.d/lisp/matlab-emacs-src/"
     :config
-    (require 'matlab-load)
+    ;(require 'matlab-load)
     (setq mlint-programs
      (quote
       ("/Applications/MATLAB_R2015b.app/bin/maci64/mlint" "/usr/local/MATLAB/R2017a/bin/glnxa64/mlint")))
@@ -871,6 +871,7 @@
 
   (use-package interleave
     :ensure t)
+
   (use-package org-ref
     :ensure t
     :init
