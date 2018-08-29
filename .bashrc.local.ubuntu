@@ -1,23 +1,7 @@
-alias uncompress='bzip2 -cd'
-alias unarchive='tar xvf -'
-alias mntbox='sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 qazmonk@toast.whatbox.ca: ~/mnt/'
-alias open='xdg-open'
-alias play='vlc --full-screen'
 alias set-hworkspaces='gsettings org.compiz.core:/org/compiz/profiles/unity/plugins/core/ hsize '
 alias set-vworkspaces='gsettings org.compiz.core:/org/compiz/profiles/unity/plugins/core/ vsize '
-. /home/nate/torch/install/bin/torch-activate
-alias restart-wifi='sudo systemctl restart network-manager'
-alias unmntbx='fusermount -u ~/mnt'
 
 alias sound='pavucontrol'
-
-alias autosshfs='sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3'
-
-# caps -> control
-setxkbmap us -option ctrl:nocaps
-
-# turn off tap to click
-synclient MaxTapTime=0
-
-# log dbus adress
-~/dotfiles/cmds/setup_dbus_address.sh
+alias restart-wifi='sudo systemctl restart network-manager'
+alias open='xdg-open'
+alias play='vlc --full-screen'

@@ -1,6 +1,6 @@
 * General Stuff
   #+BEGIN_SRC emacs-lisp
-    (setq debug-on-error t)
+    (setq debug-on-error nil)
     (setq-default fill-column 90)
     (global-unset-key (kbd "C-z"))
     (setq inhibit-splash-screen t)
@@ -872,13 +872,22 @@
   (use-package interleave
     :ensure t)
 
+  (use-package biblio
+    :load-path "~/.emacs.d/lisp/biblio.el")
+
+
   (use-package org-ref
     :ensure t
     :init
     (setf org-ref-bibliography-notes "~/Dropbox/LuceyResearch/articles.org"
           org-ref-notes-directory "~/Dropbox/LuceyResearch/notes/"
           org-ref-default-bibliography `("~/Dropbox/LuceyResearch/articles.bib")
-          org-ref-pdf-directory "~/Dropbox/LuceyResearch/pdfs/"))
+          org-ref-pdf-directory "~/Dropbox/LuceyResearch/pdfs/")
+    :config
+    )
+
+
+
          
 #+END_SRC
 ** MAGIT

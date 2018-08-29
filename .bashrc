@@ -1,61 +1,17 @@
-export BASH_CONF="bashrc"
+#!/bin/bash
 
+# This file is just a holder for sourcing the following two files, and catching
+# any lines added by scripts
+GLOBAL_BASHRC="$HOME/dotfiles/.bashrc.global"
+if [ -e "$GLOBAL_BASHRC" ]
+then
+    source $GLOBAL_BASHRC
+fi
 
-LOCAL_BASHRC=".bashrc.local"
+LOCAL_BASHRC="$HOME/dotfiles/.bashrc.local"
 if [ -e "$LOCAL_BASHRC" ]
 then
    source $LOCAL_BASHRC
 fi
 
-export PATH=/usr/local/bin:~/dotfiles/bin:$PATH
-
-alias ls='ls -GFh --color=auto'
-alias ll='ls -l --color=auto'
-
-
-alias calc="~/dotfiles/cmds/calc.sh"
-set -o emacs
-
-
-export CLICOLOR=1
-export LSCOLORS=GxFxCxDxBxegedabagaced
-
-
-function prompt {
-    local BLACK="\[\033[0;30m\]"
-    local BLACKBOLD="\[\033[1;30m\]"
-    local RED="\[\033[0;31m\]"
-    local REDBOLD="\[\033[1;31m\]"
-    local GREEN="\[\033[0;32m\]"
-    local GREENBOLD="\[\033[1;32m\]"
-    local YELLOW="\[\033[0;33m\]"
-    local YELLOWBOLD="\[\033[1;33m\]"
-    local BLUE="\[\033[0;34m\]"
-    local BLUEBOLD="\[\033[1;34m\]"
-    local PURPLE="\[\033[0;35m\]"
-    local PURPLEBOLD="\[\033[1;35m\]"
-    local CYAN="\[\033[0;36m\]"
-    local CYANBOLD="\[\033[1;36m\]"
-    local WHITE="\[\033[0;37m\]"
-    local WHITEBOLD="\[\033[1;37m\]"
-    local RESETCOLOR="\[\e[00m\]"
-
-    export PS1="\n$RED\u$PURPLE @ $GREEN\w $RESETCOLOR$GREENBOLD\n\$(git branch 2> /dev/null)\n $BLUE[\#] → $RESETCOLOR"
-    export PS2=" | → $RESETCOLOR"
-}
-
-case "$TERM" in
-    "dumb")
-        PS1="$ "
-        ;;
-    xterm*|eterm*|screen)
-        prompt
-        ;;
-esac
-
-
-
-export PATH="/home/nchodosh/python/bin:$PATH"
-
-# added by Anaconda3 installer
-export PATH="/home/nate/anaconda3/bin:$PATH"
+. /home/nate/torch/install/bin/torch-activate

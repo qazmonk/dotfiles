@@ -1,0 +1,14 @@
+*
+!cmds
+!lisp
+!cmds/*.sh
+!lisp/*.lisp
+!*.bashrc.*
+!*.sh
+!*.org
+!*.el
+!config
+!.emacs
+!.gitconfig
+!.gitignore
+/config.el
