@@ -1,6 +1,7 @@
 * General Stuff
   #+BEGIN_SRC emacs-lisp
-    (setq debug-on-error t)
+    (exec-path-from-shell-initialize)
+    (setq debug-on-error nil)
     (setq-default fill-column 90)
     (global-unset-key (kbd "C-z"))
     (setq inhibit-splash-screen t)
@@ -99,6 +100,9 @@
   ; Add convenient bindings for splitting windows
   (global-set-key (kbd "C-x h") 'split-window-horizontally)
   (global-set-key (kbd "C-x v") 'split-window-vertically)
+
+  ;this helps performance
+  ;(setq auto-window-vscroll nil)
 #+END_SRC
 ** Themes
 #+BEGIN_SRC emacs-lisp
@@ -157,9 +161,9 @@
 #+END_SRC
 * Minor Modes
 #+BEGIN_SRC emacs-lisp
-  (require 'help-fns+)
-  (use-package semantic
-    :ensure t)
+   (require 'help-fns+)
+   (use-package semantic
+     :ensure t)
 
 
   (use-package linum
@@ -169,138 +173,143 @@
     (setf linum-format "%3i"))
 
 
-  (use-package smex
-    :ensure t
-    :config
-    (smex-initialize)
-    (global-set-key (kbd "C-c C-c M-x") 'execute-extended-command) ; this is the old M-x
-    :bind (("M-x" . smex)
-           ("M-X" . smex-major-mode-commands)))
+   ;; (use-package smex
+   ;;   :ensure t
+   ;;   :config
+   ;;   (smex-initialize)
+   ;;   (global-set-key (kbd "C-c C-c M-x") 'execute-extended-command) ; this is the old M-x
+   ;;   :bind (("M-x" . smex)
+   ;;          ("M-X" . smex-major-mode-commands)))
+
   (use-package ace-jump-mode
-    :ensure t
-    :config
-    (setq ace-jump-mode-scope 'window)
-    :bind (("C-c SPC" . ace-jump-mode)))
-  (use-package image+
-    :config
-    (imagex-global-sticky-mode 1)
-    :bind (("C-+" . imagex-sticky-zoom-in)
-           ("C--" . imagex-sticky-zoom-out)))
-  (use-package neotree
-    :ensure t
-    :bind ([f8] . neotree-toggle)
-    :config
-    (setq neo-theme (quote nerd)))
+     :ensure t
+     :config
+     (setq ace-jump-mode-scope 'window)
+     (define-key global-map (kbd "C-c SPC") 'ace-jump-mode))
 
-  (use-package multi-scratch
-    :load-path "~/.emacs.d/lisp/multi-scratch.el")
-  (use-package paredit
-    :ensure t
-    :load-path "~/.emacs.d/paredit/"
-    :commands enable-paredit-mode)
-  (use-package imenu-anywhere
-    :ensure t
-    :bind (("M-i" . imenu-anywhere))
-    :config
-    (defun my-merge-imenu ()
-      (interactive)
-      (let ((mode-imenu (imenu-default-create-index-function))
-            (custom-imenu (imenu--generic-function imenu-generic-expression)))
-        (append mode-imenu custom-imenu))))
-  ;; ;;MINIMAP
-  ;; (when window-system
-  ;;   (load "natesminimap.el")
-  ;;   (scroll-bar-mode -1)
-  ;;   (setq minimap-width-fraction 0.1)
-  ;;   (setq minimap-minimum-width 20)
-  ;;   (minimap-mode)
-  ;;   (defun minimap-toggle ()
-  ;;     "Toggle minimap for current buffer."
-  ;;     (interactive)
-  ;;     (if (not (get-buffer-window minimap-buffer-name))
-  ;;         (progn (minimap-create)
-  ;;                (setf minimap-exists t))
-  ;;       (progn (minimap-kill)
-  ;;              (setf minimap-exists t)))))
-  ;; (use-package ido
-  ;;   :ensure t
-  ;;   :bind (("C-x C-f" . ido-find-file))
-  ;;   :config
-  ;;   (ido-mode t)
-  ;;   (ido-everywhere)
-  ;;   (setq ido-mode (quote both))
-  ;;   (setq ido-enable-flex-matching t))
-  ;; (use-package ido-completing-read+
-  ;;   :ensure t
-  ;;   :config
-  ;;   (require 'ido)
-  ;;   (ido-ubiquitous-mode t)
-  ;;   (put 'dired-do-rename 'ido 'find-file)
-  ;;   (put 'dired-do-copy 'ido 'find-file))
+   (use-package image+
+     :config
+     (imagex-global-sticky-mode 1)
+     :bind (("C-+" . imagex-sticky-zoom-in)
+            ("C--" . imagex-sticky-zoom-out)))
+   (use-package neotree
+     :ensure t
+     :bind ([f8] . neotree-toggle)
+     :config
+     (setq neo-theme (quote nerd)))
 
-  (use-package ivy
-    :ensure t
-    :init
-    (ivy-mode)
-    :config
-    (setq ivy-use-virtual-vuffers t)
-    (setq ivy-count-format "(%d/%d) ")
-    :bind
-    (("C-s" . swiper)
-     ("M-x" . counsel-M-x)
-     ("C-x C-f" . counsel-find-file)
-     ("<f1> f" . counsel-describe-function)
-     ("<f1> v" . counsel-describe-variable)
-     ("<f1> l" . counsel-find-library)
-     ("<f2> i" . counsel-info-lookup-symbol)
-     ("<f2> u" . counsel-unicode-char))
-    
-    ("C-c g" . counsel-git)
-    ("C-c j" . counsel-git-grep)
-    ("C-c k" . counsel-ag)
-    ("C-x l" . counsel-locate)
-    ("C-S-o" . counsel-rhythmbox))
-  (use-package flyspell
-    :config
-    (add-hook 'flyspell-mode-hook (lambda ()
-                                    (define-key flyspell-mode-map (kbd "M-<f1>")
-                                      #'flyspell-check-previous-highlighted-word))))
+   (use-package multi-scratch
+     :load-path "~/.emacs.d/lisp/multi-scratch.el")
+   (use-package paredit
+     :ensure t
+     :load-path "~/.emacs.d/paredit/"
+     :commands enable-paredit-mode)
+   (use-package imenu-anywhere
+     :ensure t
+     :bind (("M-i" . imenu-anywhere))
+     :config
+     (defun my-merge-imenu ()
+       (interactive)
+       (let ((mode-imenu (imenu-default-create-index-function))
+             (custom-imenu (imenu--generic-function imenu-generic-expression)))
+         (append mode-imenu custom-imenu))))
+   ;; ;;MINIMAP
+   ;; (when window-system
+   ;;   (load "natesminimap.el")
+   ;;   (scroll-bar-mode -1)
+   ;;   (Setq minimap-width-fraction 0.1)
+   ;;   (setq minimap-minimum-width 20)
+   ;;   (minimap-mode)
+   ;;   (defun minimap-toggle ()
+   ;;     "Toggle minimap for current buffer."
+   ;;     (interactive)
+   ;;     (if (not (get-buffer-window minimap-buffer-name))
+   ;;         (progn (minimap-create)
+   ;;                (setf minimap-exists t))
+   ;;       (progn (minimap-kill)
+   ;;              (setf minimap-exists t)))))
+   ;; (use-package ido
+    ;;   :ensure t
+   ;;   :bind (("C-x C-f" . ido-find-file))
+   ;;   :config
+   ;;   (ido-mode t)
+   ;;   (ido-everywhere)
+   ;;   (setq ido-mode (quote both))
+   ;;   (setq ido-enable-flex-matching t))
+   ;; (use-package ido-completing-read+
+   ;;   :ensure t
+   ;;   :config
+   ;;   (require 'ido)
+   ;;   (ido-ubiquitous-mode t)
+   ;;   (put 'dired-do-rename 'ido 'find-file)
+   ;;   (put 'dired-do-copy 'ido 'find-file))
 
-  ;; adaptive-fill-mode
-  (setq adaptive-fill-mode t)
+   (use-package ivy
+     :ensure t
+     :init
+     (ivy-mode)
+     :config
+     (setq ivy-use-virtual-vuffers t)
+     (setq ivy-count-format "(%d/%d) ")
+     :bind
+     (("C-s" . swiper)
+      ("M-x" . counsel-M-x)
+      ("C-x C-f" . counsel-find-file)
+      ("<f1> f" . counsel-describe-function)
+      ("<f1> v" . counsel-describe-variable)
+      ("<f1> l" . counsel-find-library)
+      ("<f2> i" . counsel-info-lookup-symbol)
+      ("<f2> u" . counsel-unicode-char))
+     
+     ("C-c g" . counsel-git)
+     ("C-c j" . counsel-git-grep)
+     ("C-c k" . counsel-ag)
+     ("C-x l" . counsel-locate)
+     ("C-S-o" . counsel-rhythmbox))
+   (use-package flyspell
+     :config
+     (add-hook 'flyspell-mode-hook (lambda ()
+                                     (define-key flyspell-mode-map (kbd "M-<f1>")
+                                       #'flyspell-check-previous-highlighted-word))))
 
-  (use-package autoinsert
-    :config
-    (auto-insert-mode)
-    (defun autoinsert-yas-expand ()
-      "Replace text in yasnipped template."
-      (yas-expand-snippet (buffer-string) (point-min) (point-max)))
-    (setq auto-insert-directory "~/dotfiles/autoinserts/")
-    (define-auto-insert "\\.tex$" "standard.tex"))
+   ;; adaptive-fill-mode
+   (setq adaptive-fill-mode t)
 
-  (use-package highlight-parentheses
-    :ensure t
-    :config
-    (setq hl-paren-colors
-          (quote
-           ("PaleGreen1" "SpringGreen1" "SpringGreen3" "SpringGreen4"))))
+   (use-package autoinsert
+     :config
+     (auto-insert-mode)
+     (defun autoinsert-yas-expand ()
+       "Replace text in yasnipped template."
+       (yas-expand-snippet (buffer-string) (point-min) (point-max)))
+     (setq auto-insert-directory "~/dotfiles/autoinserts/")
+     (define-auto-insert "\\.tex$" "standard.tex"))
+
+   (use-package highlight-parentheses
+     :ensure t
+     :config
+     (setq hl-paren-colors
+           (quote
+            ("PaleGreen1" "SpringGreen1" "SpringGreen3" "SpringGreen4"))))
+
   (use-package re-builder
-    :config
-    (setq reb-re-syntax (quote string)))
-  (use-package beacon
-    :ensure t
-    :if window-system
-    :config
-    (setf beacon-color (face-background 'cursor))
-    (setq ring-bell-function 
-          (lambda ()
-            (beacon-blink)))
-    (beacon-mode t))
-  (use-package undo-tree
-    :ensure t)
-  (global-undo-tree-mode 1)
-  (setf undo-tree-auto-save-history t)
-  (setf undo-tree-history-directory-alist '((".*" . "~/.emacs.d/undo-tree-history/")))
+     :config
+     (setq reb-re-syntax (quote string)))
+
+   (use-package beacon ; disabled for performance reasons
+     :ensure t
+     :if window-system
+     :config
+     (setf beacon-color (face-background 'cursor))
+     (setq ring-bell-function 'beacon-blink)
+     (beacon-mode nil))
+
+   (use-package undo-tree
+     :demand
+     :ensure t
+     :init
+     (global-undo-tree-mode 1)
+     (setf undo-tree-auto-save-history t)
+     (setf undo-tree-history-directory-alist '((".*" . "~/.emacs.d/undo-tree-history/"))))
 #+End_SRC
 * Major Modes
 ** Shells 
@@ -469,7 +478,8 @@
     (add-hook 'python-mode-hook 
               (lambda () 
                 (highlight-indent-guides-mode)
-                (setq imenu-create-index-function 'python-imenu-create-index)))
+                (setq imenu-create-index-function 'python-imenu-create-index)
+                (setq company-backends '((elpy-company-backend :with :separate company-dabbrev-code) company-files))))
     (defun python3-shell ()
       (interactive)
       (run-python "python3" t t)))
@@ -480,10 +490,7 @@
 
   (use-package elpy
     :ensure t
-    :init
-    (add-hook 'python-mode-hook 
-              (lambda () 
-                (elpy-enable))))
+    :init (elpy-enable))
 
   (use-package highlight-indent-guides
     :ensure t
