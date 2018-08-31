@@ -1,6 +1,5 @@
 * General Stuff
   #+BEGIN_SRC emacs-lisp
-    (exec-path-from-shell-initialize)
     (setq debug-on-error nil)
     (setq-default fill-column 90)
     (global-unset-key (kbd "C-z"))
@@ -161,9 +160,14 @@
 #+END_SRC
 * Minor Modes
 #+BEGIN_SRC emacs-lisp
-   (require 'help-fns+)
-   (use-package semantic
-     :ensure t)
+  (use-package exec-path-from-shell
+    :ensure t
+    :demand t
+    :config (exec-path-from-shell-initialize))
+
+  (require 'help-fns+)
+  (use-package semantic
+    :ensure t)
 
 
   (use-package linum
