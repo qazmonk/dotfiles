@@ -8,7 +8,7 @@ then
     source $GLOBAL_BASHRC
 fi
 
-LOCAL_BASHRC="$HOME/dotfiles/.bashrc.local"
+LOCAL_BASHRC="$HOME/.bashrc.local"
 if [ -e "$LOCAL_BASHRC" ]
 then
    source $LOCAL_BASHRC
