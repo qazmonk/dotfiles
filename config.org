@@ -469,37 +469,39 @@
 #+END_SRC
 *** PYTHON
 #+BEGIN_SRC emacs-lisp
-  (eval-after-load "semantic"
-    (remove-hook 'python-mode-hook 'wisent-python-default-setup))
-  (use-package python
-    :demand t
-    :config
-    (defun python-align-args (beg end)
-                  (interactive "r")
-                  (align-regexp beg end "\\(\\s-*\\)\\(type\\|action\\|choices\\)[^\"]*?=" 1 1 t)
-                  (align-regexp beg end "\\(\\s-*\\)default[^\"]*=" 1 1 t)
-                  (align-regexp beg end "\\(\\s-*\\)help[^\"]*=" 1 1 t))
-    (add-hook 'python-mode-hook 
-              (lambda () 
-                (highlight-indent-guides-mode)
-                (setq imenu-create-index-function 'python-imenu-create-index)
-                (setq company-backends '((elpy-company-backend :with :separate company-dabbrev-code) company-files))))
-    (defun python3-shell ()
-      (interactive)
-      (run-python "python3" t t)))
+    (eval-after-load "semantic"
+      (remove-hook 'python-mode-hook 'wisent-python-default-setup))
+    (use-package python
+      :demand t
+      :config
+      (defun python-align-args (beg end)
+                    (interactive "r")
+                    (align-regexp beg end "\\(\\s-*\\)\\(type\\|action\\|choices\\)[^\"]*?=" 1 1 t)
+                    (align-regexp beg end "\\(\\s-*\\)default[^\"]*=" 1 1 t)
+                    (align-regexp beg end "\\(\\s-*\\)help[^\"]*=" 1 1 t))
+      (add-hook 'python-mode-hook 
+                (lambda () 
+                  (highlight-indent-guides-mode)
+                  (setq imenu-create-index-function 'python-imenu-create-index)
+                  (setq company-backends '((elpy-company-backend :with :separate company-dabbrev-code) company-files))))
+      (defun python3-shell ()
+        (interactive)
+        (run-python "python3" t t)))
 
-  (use-package pyenv-mode
-    :ensure t
-    :init (pyenv-mode))
+    (use-package pyenv-mode
+      :ensure t
+      :init 
+      (add-to-list 'exec-path "~/.pyenv/shims")
+      (pyenv-mode))
 
-  (use-package elpy
-    :ensure t
-    :init (elpy-enable))
+    (use-package elpy
+      :ensure t
+      :init (elpy-enable))
 
-  (use-package highlight-indent-guides
-    :ensure t
-    :config
-    (setq highlight-indent-guides-method 'character))
+    (use-package highlight-indent-guides
+      :ensure t
+      :config
+      (setq highlight-indent-guides-method 'character))
 #+END_SRC
 *** LISP
 #+BEGIN_SRC emacs-lisp
