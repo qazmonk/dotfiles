@@ -1,0 +1,16 @@
+# set PATH so it includes user's private bin directories
+PATH="$HOME/bin:$HOME/.local/bin:$PATH"
+
+# caps -> control
+setxkbmap us -option ctrl:nocaps
+
+# turn off tap to click
+synclient MaxTapTime=0
+
+# log dbus adress
+~/dotfiles/cmds/setup_dbus_address.sh
+
+# setup pyenv
+export PATH="/home/nate/.pyenv/bin:$PATH"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"

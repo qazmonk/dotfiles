@@ -11,4 +11,5 @@
 !.emacs
 !.gitconfig
 !.gitignore
+!.profile*
 /config.el
