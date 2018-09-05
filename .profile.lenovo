@@ -14,3 +14,6 @@ synclient MaxTapTime=0
 export PATH="/home/nate/.pyenv/bin:$PATH"
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
+
+# source .bashrc
+source ~/.bashrc

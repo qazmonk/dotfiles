@@ -1,17 +1,8 @@
 #!/bin/bash
 
-# This file is just a holder for sourcing the following two files, and catching
-# any lines added by scripts
-GLOBAL_BASHRC="$HOME/dotfiles/.bashrc.global"
-if [ -e "$GLOBAL_BASHRC" ]
-then
-    source $GLOBAL_BASHRC
-fi
 
-LOCAL_BASHRC="$HOME/.bashrc.local"
-if [ -e "$LOCAL_BASHRC" ]
-then
-   source $LOCAL_BASHRC
-fi
 
 . /home/nate/torch/install/bin/torch-activate
+
+# added by Anaconda3 installer
+export PATH="/home/nate/anaconda3/bin:$PATH"
