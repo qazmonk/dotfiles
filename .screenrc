@@ -45,4 +45,5 @@ bind F eval "hardstatus alwayslastline"
 # No annoying startup message
 startup_message off
 
-
+# start xpra
+# screen -t xpra 9 xpra start $DISPLAY --no-daemon

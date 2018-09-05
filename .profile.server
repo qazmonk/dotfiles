@@ -1,0 +1,53 @@
+# ~/.profile: executed by the command interpreter for login shells.
+# This file is not read by bash(1), if ~/.bash_profile or ~/.bash_login
+# exists.
+# see /usr/share/doc/bash/examples/startup-files for examples.
+# the files are located in the bash-doc package.
+
+# the default umask is set in /etc/profile; for setting the umask
+# for ssh logins, install and configure the libpam-umask package.
+#umask 022
+
+# if running bash
+if [ -n "$BASH_VERSION" ]; then
+    # include .bashrc if it exists
+    if [ -f "$HOME/.bashrc" ]; then
+	. "$HOME/.bashrc"
+    fi
+fi
+
+# set PATH so it includes user's private bin directories
+PATH="$HOME/bin:$HOME/.local/bin:$PATH"
+
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64/:~/cuda/lib64
+. /home/nchodosh/torch/install/bin/torch-activate
+
+
+# Auto-screen invocation. see: http://taint.org/wk/RemoteLoginAutoScreen
+# if we're coming from a remote SSH connection, in an interactive session
+# then automatically put us into a screen(1) session.   Only try once
+# -- if $STARTED_SCREEN is set, don't try it again, to avoid looping
+# if screen fails for some reason.
+if [ "$TERM" != "dumb" -a "$TERM" != screen -a "$PS1" != "" -a "${STARTED_SCREEN:-x}" = x -a "${SSH_TTY:-x}" != x -a "$DISPLAY" == "" ]
+then
+  echo "Auto-starting screen."
+
+  # Set the window title to HOSTNAME
+  echo -ne "\e]2;$HOSTNAME\a"
+
+  # If no session is running, set DISPLAY environment variable
+  screen -ls | egrep "^No Sockets found" > /dev/null
+  if [ $? = 0 ]; then
+    export DISPLAY=:$(( $( (echo 5555; ls /tmp/.X11-unix/X* 2> /dev/null) | sed 's/^.*\/X//' | sort -n | tail -n 1) + 1))
+    echo "No running screen found. DISPLAY set to $DISPLAY."
+  fi
+  STARTED_SCREEN=1 ; export STARTED_SCREEN
+  screen -D -RR && exit 0
+  # normally, execution of this rc script ends here...
+  echo "Screen failed! Continuing with normal bash startup."
+fi
+# [end of auto-screen snippet]
+
+if [ -e ~/.bashrc ]; then
+    source ~/.bashrc
+fi
