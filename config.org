@@ -506,18 +506,18 @@
 #+END_SRC
 *** LISP
 #+BEGIN_SRC emacs-lisp
-  (setq inferior-lisp-program "/usr/local/bin/sbcl")
-  (use-package slime-company
-    :ensure t)
+  (setq inferior-lisp-program (executable-find "sbcl"))
+  ;; (use-package slime-company
+  ;;   :ensure t)
   (use-package slime
     :ensure t
     :config
-    (require 'slime-autoloads)
     (add-to-list 'slime-contribs 'inferior-slime)
     (add-to-list 'slime-contribs 'slime-fancy)
     (add-to-list 'slime-contribs 'slime-autodoc)
     (add-to-list 'slime-contribs 'slime-company)
-    (setq slime-use-autodoc-mode t)
+    (slime-setup)
+    (setq slime-use-autodoc-mode nil)
     (setq slime-company-major-modes
           (quote
            (lisp-mode clojure-mode slime-repl-mode 
