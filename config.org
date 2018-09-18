@@ -312,7 +312,7 @@
      :ensure t
      :init
      (global-undo-tree-mode 1)
-     (setf undo-tree-auto-save-history t)
+     (setf undo-tree-auto-save-history nil)
      (setf undo-tree-history-directory-alist '((".*" . "~/.emacs.d/undo-tree-history/"))))
 #+End_SRC
 * Major Modes
@@ -516,8 +516,8 @@
     (add-to-list 'slime-contribs 'inferior-slime)
     (add-to-list 'slime-contribs 'slime-fancy)
     (add-to-list 'slime-contribs 'slime-autodoc)
-    (slime-setup '(slime-fancy slime-company))
-    (setq slime-use-autodoc-mode nil)
+    (add-to-list 'slime-contribs 'slime-company)
+    (setq slime-use-autodoc-mode t)
     (setq slime-company-major-modes
           (quote
            (lisp-mode clojure-mode slime-repl-mode 
@@ -555,9 +555,10 @@
     (define-key company-active-map (kbd "\C-p") 'company-select-previous)
     (define-key company-active-map (kbd "\C-d") 'company-show-doc-buffer)
     (define-key company-active-map (kbd "M-.") 'company-show-location)
-    (setq-local company-backends '(company-files
-                                   (company-keywords 
-                                    company-dabbrev-code))))
+    ;; (setq-local company-backends '(company-files
+    ;;                                (company-keywords 
+    ;;                                 company-dabbrev-code)))
+    )
 
     (defun nates-lisp-mode ()
       (slime-mode)
@@ -820,63 +821,78 @@
            (org-bbdb org-bibtex org-gnus org-info org-irc org-mhe org-rmail org-w3m)))
     (setq org-src-tab-acts-natively t)
     (setq org-src-window-setup (quote current-window))
-    (setq org-structure-template-alist
-          (quote
-           (("S" "#+BEGIN_SRC emacs-lisp
+    (org-babel-do-load-languages
+     'org-babel-load-languages
+     '((emacs-lisp . t)
+       (python . t)))
+    ;; (setq org-structure-template-alist
+  ;;         (quote
+  ;;          (("S" "#+BEGIN_SRC emacs-lisp
 
-  ,#+END_SRC" "")
-            ("s" "#+BEGIN_SRC ?
+  ;; #+END_SRC" "")
+  ;;           ("s" "#+BEGIN_SRC ?
 
-  ,#+END_SRC" "<src lang=\"?\">
+  ;; #+END_SRC" "<src lang=\"?\">
 
-  </src>")
-            ("e" "#+BEGIN_EXAMPLE
-  ?
-  ,#+END_EXAMPLE" "<example>
-  ?
-  </example>")
-            ("q" "#+BEGIN_QUOTE
-  ?
-  ,#+END_QUOTE" "<quote>
-  ?
-  </quote>")
-            ("v" "#+BEGIN_VERSE
-  ?
-  ,#+END_VERSE" "<verse>
-  ?
-  </verse>")
-            ("V" "#+BEGIN_VERBATIM
-  ?
-  ,#+END_VERBATIM" "<verbatim>
-  ?
-  </verbatim>")
-            ("c" "#+BEGIN_CENTER
-  ?
-  ,#+END_CENTER" "<center>
-  ?
-  </center>")
-            ("l" "#+BEGIN_LaTeX
-  ?
-  ,#+END_LaTeX" "<literal style=\"latex\">
-  ?
-  </literal>")
-            ("L" "#+LaTeX: " "<literal style=\"latex\">?</literal>")
-            ("h" "#+BEGIN_HTML
-  ?
-  ,#+END_HTML" "<literal style=\"html\">
-  ?
-  </literal>")
-            ("H" "#+HTML: " "<literal style=\"html\">?</literal>")
-            ("a" "#+BEGIN_ASCII
-  ?
-  ,#+END_ASCII" "")
-            ("A" "#+ASCII: " "")
-            ("i" "#+INDEX: ?" "#+INDEX: ?")
-            ("I" "#+INCLUDE: %file ?" "<include file=%file markup=\"?\">"))))
+  ;; </src>")
+  ;;           ("e" "#+BEGIN_EXAMPLE
+  ;; ?
+  ;; #+END_EXAMPLE" "<example>
+  ;; ?
+  ;; </example>")
+  ;;           ("q" "#+BEGIN_QUOTE
+  ;; ?
+  ;; #+END_QUOTE" "<quote>
+  ;; ?
+  ;; </quote>")
+  ;;           ("v" "#+BEGIN_VERSE
+  ;; ?
+  ;; #+END_VERSE" "<verse>
+  ;; ?
+  ;; </verse>")
+  ;;           ("V" "#+BEGIN_VERBATIM
+  ;; ?
+  ;; #+END_VERBATIM" "<verbatim>
+  ;; ?
+  ;; </verbatim>")
+  ;;           ("c" "#+BEGIN_CENTER
+  ;; ?
+  ;; #+END_CENTER" "<center>
+  ;; ?
+  ;; </center>")
+  ;;           ("l" "#+BEGIN_LaTeX
+  ;; ?
+  ;; #+END_LaTeX" "<literal style=\"latex\">
+  ;; ?
+  ;; </literal>")
+  ;;           ("L" "#+LaTeX: " "<literal style=\"latex\">?</literal>")
+  ;;           ("h" "#+BEGIN_HTML
+  ;; ?
+  ;; #+END_HTML" "<literal style=\"html\">
+  ;; ?
+  ;; </literal>")
+  ;;           ("H" "#+HTML: " "<literal style=\"html\">?</literal>")
+  ;;           ("a" "#+BEGIN_ASCII
+  ;; ?
+  ;; #+END_ASCII" "")
+  ;;           ("A" "#+ASCII: " "")
+  ;;           ("i" "#+INDEX: ?" "#+INDEX: ?")
+  ;;           ("I" "#+INCLUDE: %file ?" "<include file=%file markup=\"?\">"))))
+    
+    
     (defun nates-org-mode-hook ()
       (visual-line-mode t)))
     (add-hook 'org-mode-hook 'nates-org-mode-hook)
     (setq org-todo-keywords '((sequence "TODO(t)" "IN-PROGRESS(i!)" "|" "DONE(d!)")))
+
+  (use-package eval-in-repl
+    :ensure t)
+
+  (use-package eval-in-repl-python
+    :config
+    (add-hook 'org-mode-hook
+              '(lambda ()
+                 (local-set-key (kbd "C-c p") 'eir-eval-in-python))))
 
   (use-package pdf-tools
     :ensure t
@@ -897,8 +913,7 @@
           org-ref-notes-directory "~/Dropbox/LuceyResearch/notes/"
           org-ref-default-bibliography `("~/Dropbox/LuceyResearch/articles.bib")
           org-ref-pdf-directory "~/Dropbox/LuceyResearch/pdfs/")
-    :config
-    )
+    :config)
 
 
 

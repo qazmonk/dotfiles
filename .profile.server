@@ -48,6 +48,3 @@ then
 fi
 # [end of auto-screen snippet]
 
-if [ -e ~/.bashrc ]; then
-    source ~/.bashrc
-fi
