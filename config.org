@@ -506,17 +506,17 @@
 #+END_SRC
 *** LISP
 #+BEGIN_SRC emacs-lisp
-  (setq inferior-lisp-program "/usr/local/bin/sbcl")
-  (use-package slime-company
-    :ensure t)
+  (setq inferior-lisp-program (executable-find "sbcl"))
+  ;; (use-package slime-company
+  ;;   :ensure t)
   (use-package slime
     :ensure t
     :config
-    (require 'slime-autoloads)
     (add-to-list 'slime-contribs 'inferior-slime)
     (add-to-list 'slime-contribs 'slime-fancy)
     (add-to-list 'slime-contribs 'slime-autodoc)
-    (slime-setup '(slime-fancy slime-company))
+    (add-to-list 'slime-contribs 'slime-company)
+    (slime-setup)
     (setq slime-use-autodoc-mode nil)
     (setq slime-company-major-modes
           (quote
@@ -555,9 +555,10 @@
     (define-key company-active-map (kbd "\C-p") 'company-select-previous)
     (define-key company-active-map (kbd "\C-d") 'company-show-doc-buffer)
     (define-key company-active-map (kbd "M-.") 'company-show-location)
-    (setq-local company-backends '(company-files
-                                   (company-keywords 
-                                    company-dabbrev-code))))
+    ;; (setq-local company-backends '(company-files
+    ;;                                (company-keywords 
+    ;;                                 company-dabbrev-code)))
+    )
 
     (defun nates-lisp-mode ()
       (slime-mode)

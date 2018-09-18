@@ -4,6 +4,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(auto-save-file-name-transforms (quote ((".*" "/tmp/\\2" t))))
+ '(browse-url-browser-function (quote browse-url-firefox))
  '(package-selected-packages
    (quote
     (gscholar-bibtex flycheck-package exec-path-from-shell pyenv-mode elpy highlight-indent-guides company-anaconda anaconda-mode company-shell use-package undo-tree tagedit sublime-themes smex slime-company paredit org-ref neotree magit interleave imenu-anywhere ido-completing-read+ highlight-parentheses counsel company-auctex cmake-mode beacon auctex-latexmk ace-jump-mode))))
