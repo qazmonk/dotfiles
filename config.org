@@ -59,10 +59,10 @@
 
   (global-set-key (kbd "C-'") 'set-mark-command)
 
-  (global-set-key (kbd "<s-right>") 'windmove-right)
-  (global-set-key (kbd "<s-left>") 'windmove-left)
-  (global-set-key (kbd "<s-up>") 'windmove-up)
-  (global-set-key (kbd "<s-down>") 'windmove-down)
+  (global-set-key (kbd "<C-M-right>") 'windmove-right)
+  (global-set-key (kbd "<C-M-left>") 'windmove-left)
+  (global-set-key (kbd "<C-M-up>") 'windmove-up)
+  (global-set-key (kbd "<C-M-down>") 'windmove-down)
 
   (defun push-mark-no-activate ()
     "Pushes `point' to `mark-ring' and does not activate the region
@@ -483,7 +483,8 @@
               (lambda () 
                 (highlight-indent-guides-mode)
                 (setq imenu-create-index-function 'python-imenu-create-index)
-                (setq company-backends '((elpy-company-backend :with :separate company-dabbrev-code) company-files))))
+                ;(setq company-backends '((elpy-company-backend :with :separate company-dabbrev-code) company-files))
+                (setq company-backends '(elpy-company-backend company-dabbrev-code company-files))))
     (defun python3-shell ()
       (interactive)
       (run-python "python3" t t)))
@@ -493,7 +494,7 @@
     :init 
     (add-to-list 'exec-path "~/.pyenv/shims/")
     (add-to-list 'exec-path "~/.pyenv/bin/")
-    (pyenv-mode))
+    (add-hook 'python-mode-hook 'pyenv-mode))
 
   (use-package elpy
     :ensure t
@@ -560,58 +561,60 @@
     ;;                                 company-dabbrev-code)))
     )
 
-    (defun nates-lisp-mode ()
-      (slime-mode)
-      (local-set-key (kbd "C-M-S-s-r")
-                     (lambda ()
-                       (interactive)
-                       (shell-command "osascript ~/Dropbox/AppleScript/refresh-preview.scpt")))
-      (set (make-local-variable 'lisp-indent-function)
-           'common-lisp-indent-function)
-      (nates-general-lisp-mode)
-      (slime-autodoc-mode))
+  (defun nates-lisp-mode ()
+    (slime-mode)
+    (local-set-key (kbd "C-M-S-s-r")
+                   (lambda ()
+                     (interactive)
+                     (shell-command "osascript ~/Dropbox/AppleScript/refresh-preview.scpt")))
+    (set (make-local-variable 'lisp-indent-function)
+         'common-lisp-indent-function)
+    (nates-general-lisp-mode)
+    (slime-autodoc-mode))
 
-    (defun nates-inferior-lisp-mode ()
-      (define-key slime-repl-mode-map
-        (read-kbd-macro paredit-backward-delete-key) nil)
-      (eldoc-mode t)
-      (message "turning on eldoc-mode")
-      (local-set-key (kbd "C-M-S-s-r")
-                     (lambda ()
-                       (interactive)
-                       (shell-command "osascript ~/Dropbox/AppleScript/refresh-preview.scpt")))
-      (nates-general-lisp-mode))
+  (defun nates-inferior-lisp-mode ()
+    (define-key slime-repl-mode-map
+      (read-kbd-macro paredit-backward-delete-key) nil)
+    (eldoc-mode t)
+    (message "turning on eldoc-mode")
+    (local-set-key (kbd "C-M-S-s-r")
+                   (lambda ()
+                     (interactive)
+                     (shell-command "osascript ~/Dropbox/AppleScript/refresh-preview.scpt")))
+    (nates-general-lisp-mode))
 
 
-    (defun nates-emacs-lisp-mode ()
-      (eldoc-mode t)
-      (nates-general-lisp-mode)
-      (setq-local company-backends
-                  '(company-elisp
-                    company-files
-                    (company-keywords 
-                     company-dabbrev-code))))
+  (defun nates-emacs-lisp-mode ()
+    (eldoc-mode t)
+    (nates-general-lisp-mode)
+    (setq-local company-backends
+                '(company-elisp
+                  company-files
+                  (company-keywords 
+                   company-dabbrev-code))))
 
-    (add-hook 'lisp-mode-hook 'nates-lisp-mode)
+  (add-hook 'lisp-mode-hook 'nates-lisp-mode)
 
-    (add-hook 'emacs-lisp-mode-hook 'nates-emacs-lisp-mode)
-    (add-hook 'slime-repl-mode-hook 'nates-inferior-lisp-mode)
-    (defun nates-slime ()
-      (interactive)
-      (save-excursion
-        (slime))
-      (eldoc-mode t))
-    ;; (add-hook 'slime-mode-hook
-    ;;           (lambda ()
-    ;;             (unless (slime-connected-p)
-    ;;               (print (current-buffer))
-    ;;               (unless (equalp (current-buffer) (get-buffer "*scratch*"))
-    ;;                 (save-excursion (slime))))))
+  (add-hook 'emacs-lisp-mode-hook 'nates-emacs-lisp-mode)
+  (add-hook 'slime-repl-mode-hook 'nates-inferior-lisp-mode)
+  (defun nates-slime ()
+    (interactive)
+    (save-excursion
+      (slime))
+    (eldoc-mode t))
+  ;; (add-hook 'slime-mode-hook
+  ;;           (lambda ()
+  ;;             (unless (slime-connected-p)
+  ;;               (print (current-buffer))
+  ;;               (unless (equalp (current-buffer) (get-buffer "*scratch*"))
+  ;;                 (save-excursion (slime))))))
 
-    (add-to-list 'auto-mode-alist '("\\.j\\'" . lisp-mode))
+  (add-to-list 'auto-mode-alist '("\\.j\\'" . lisp-mode))
 
-    (eval-after-load 'slime
-      `(define-key slime-mode-map (kbd "M-?") nil))
+  (eval-after-load 'slime
+    `(define-key slime-mode-map (kbd "M-?") nil))
+
+  (font-lock-add-keywords 'lisp-mode '(("let\\+" . font-lock-keyword-face)))
   (require 'cl)
 
 #+END_SRC
