@@ -7,7 +7,7 @@ alias uncompress='bzip2 -cd'
 alias unarchive='tar xvf -'
 alias mntbox='sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 qazmonk@toast.whatbox.ca: ~/mnt/'
 alias unmntbx='fusermount -u ~/mnt'
-alias safe-sshfs='sshfs -o reconnect,ServerAliveInterval=5,ServerAliveCountMax=3'
+alias sshfs-safe='sshfs -o reconnect,ServerAliveInterval=5,ServerAliveCountMax=3'
 alias calc="~/dotfiles/cmds/calc.sh"
 set -o emacs
 
@@ -47,3 +47,5 @@ case "$TERM" in
         prompt
         ;;
 esac
+
+source /etc/bash_completion
