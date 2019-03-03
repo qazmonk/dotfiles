@@ -1,11 +1,17 @@
 * General Stuff
   #+BEGIN_SRC emacs-lisp
+    ;; Bootstrap `use-package'
+
     (setq debug-on-error nil)
     (setq-default fill-column 90)
     (global-unset-key (kbd "C-z"))
     (setq inhibit-splash-screen t)
     ;; add custom packages to load path
     (add-to-list 'load-path "~/.emacs.d/lisp")
+
+
+    (let ((default-directory  "~/dotfiles/elisp"))
+      (normal-top-level-add-subdirs-to-load-path))
   #+END_SRC
 ** Package and Use-Package
 #+BEGIN_SRC emacs-lisp
@@ -20,12 +26,18 @@
     ;; For important compatibility libraries like cl-lib
     (add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
   (package-initialize)
-  (eval-when-compile
-    (require 'use-package))
+
+
+
+  (unless (package-installed-p 'use-package)
+    (package-refresh-contents)
+    (package-install 'use-package))
+  (require 'use-package)
 #+END_SRC
 ** Global Configuration
 #+BEGIN_SRC emacs-lisp
   (use-package backup-each-save
+    :ensure t
     :init
     (add-hook 'after-save-hook 'backup-each-save)
     :config
@@ -165,9 +177,13 @@
     :demand t
     :config (exec-path-from-shell-initialize))
 
-  (require 'help-fns+)
+  (use-package help-fns+
+    :load-path "../dotfiles/elisp/help-fns+/help-fns+.el"
+    :demand t)
+
   (use-package semantic
-    :ensure t)
+    :ensure t
+    :demand t)
 
 
   (use-package linum
@@ -203,7 +219,7 @@
      (setq neo-theme (quote nerd)))
 
    (use-package multi-scratch
-     :load-path "~/.emacs.d/lisp/multi-scratch.el")
+     :load-path "~/dotfiles/elisp/multi-scratch/multi-scratch.el")
    (use-package paredit
      :ensure t
      :load-path "~/.emacs.d/paredit/"
@@ -508,8 +524,8 @@
 *** LISP
 #+BEGIN_SRC emacs-lisp
   (setq inferior-lisp-program (executable-find "sbcl"))
-  ;; (use-package slime-company
-  ;;   :ensure t)
+  (use-package slime-company
+    :ensure t)
   (use-package slime
     :ensure t
     :config
@@ -625,7 +641,7 @@
     (push 'matlab-mode company-semantic-modes))
 
   (use-package matlab
-    :load-path "~/.emacs.d/lisp/matlab-emacs-src/"
+    :load-path "~/dotfiles/elisp/matlab-emacs-src/"
     :config
     ;(require 'matlab-load)
     (setq mlint-programs
