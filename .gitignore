@@ -12,4 +12,7 @@
 !.gitconfig
 !.gitignore
 !.profile*
+!elisp
+!elisp/*.el
+!elisp/**
 /config.el
