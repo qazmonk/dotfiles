@@ -561,6 +561,13 @@
     (kill-buffer "*inferior-lisp*")
     (slime))
 
+  (defun quicklisp-add-project ()
+    (interactive)
+    (slime-eval-with-transcript
+     `(swank:interactive-eval-region
+       ,(format "(pushnew \"%s\" ql:*local-project-directories* ) (ql:register-local-projects)"
+                default-directory))))
+
 
   (defun nates-general-lisp-mode ()
     (company-mode)
