@@ -15,4 +15,6 @@
 !elisp
 !elisp/*.el
 !elisp/**
+!*.conf
+!Makefile
 /config.el

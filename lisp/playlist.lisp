@@ -1,6 +1,6 @@
 (load "~/quicklisp/setup.lisp")
 (ql:quickload :inferior-shell)
-(load "script-utils.lisp")
+(load "utils/script-utils.lisp")
 
 (defpackage :playlist
   (:use :cl :script-utils)
@@ -60,3 +60,4 @@
 			 (make-tmp-filename last-filename))))))))
 
 
+(use-package :playlist :cl-user)

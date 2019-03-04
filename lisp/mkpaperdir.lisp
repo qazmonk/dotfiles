@@ -1,6 +1,6 @@
 (load "~/quicklisp/setup.lisp")
 (ql:quickload :inferior-shell)
-(load "script-utils.lisp")
+(load "utils/script-utils.lisp")
 
 (defpackage :mkpaperdir
   (:use :cl :script-utils)
@@ -49,3 +49,5 @@
 	 (format t +mkorg+ notes-pathname)
 	 (inferior-shell:run (format nil +mkorg+ notes-pathname))
 	 (format t "~%"))))))
+
+(use-package :mkpaperdir :cl-user)
