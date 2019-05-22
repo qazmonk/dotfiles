@@ -8,7 +8,7 @@ sudo aptitude install imagemagick
 
 
 cd ~/packages/
-git clone git@github.com:politza/pdf-tools.git
+git clone http://github.com/politza/pdf-tools.git
 cd ~/packages/pdf-tools/
 make install-server-deps
 make -s
