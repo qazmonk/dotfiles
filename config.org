@@ -114,6 +114,7 @@
 
   ;this helps performance
   ;(setq auto-window-vscroll nil)
+
 #+END_SRC
 ** Themes
 #+BEGIN_SRC emacs-lisp
@@ -797,6 +798,26 @@
                   (company-auctex-init))))
 
   (use-package font-latex)
+
+  ;; Command for generating pngs of latex equations
+  (defun latex-to-png (equation output-file)
+    (interactive "MEquation: \nFOuput File: ")
+    (let ((file (make-temp-file "latext-to-png" nil ".tex")))
+      (with-temp-file file
+        (insert (format "\\documentclass[convert={outfile=%s}]{standalone} \\begin{document}"
+                        output-file))
+        (insert (format "$%s$" equation))
+        (insert "\\end{document}"))
+      (start-process-shell-command
+       "latex-to-png"
+       (get-buffer-create "*latex-to-png compilation*")
+       (concat
+        "cd "
+        temporary-file-directory
+        " && "
+        "pdflatex "
+        "-shell-escape " 
+        file))))
 #+END_SRC
 ** ORG
 #+BEGIN_SRC emacs-lisp
@@ -813,8 +834,8 @@
            ("C-M-b" . org-backward-element)
            ("C-M-d" . org-down-element))
     :config
-    (setq org-directory "~/Dropbox/org")
-    (setq org-default-notes-file "~/Dropbox/org/agenda/notes.org")
+    (setq org-directory "~/Documents/org")
+    (setq org-default-notes-file "~/Documents/org/agenda/notes.org")
     (setq org-log-done 'time)
     (setq org-capture-templates
           '(("W" "Work todo" entry (file+headline "~/Dropbox/org/agenda/work.org" "Tasks")
@@ -835,13 +856,13 @@
              "* %^{prompt|No Title}\nEntered on %U\n%? %i\n")))
     (setq org-agenda-files
           (quote
-           ("~/Dropbox/org/agenda/notes.org" "~/Dropbox/org/agenda/tasks.org"
-            "~/Dropbox/org/agenda/work.org" "~/Dropbox/org/agenda/school-work.org"
-            "~/Dropbox/org/agenda/pclassic.org")))
-    (setq org-mobile-inbox-for-pull "~/Dropbox/org/from-mobile.org")
-    (setq org-mobile-directory "~/Dropbox/MobileOrg")
-    (setq org-mobile-files '("~/Dropbox/org/agenda/notes.org" "~/Dropbox/org/agenda/tasks.org"
-                             "~/Dropbox/org/agenda/work.org"))
+           ("~/Documents/org/agenda/notes.org" "~/Documents/org/agenda/tasks.org"
+            "~/Documents/org/agenda/work.org" "~/Documents/org/agenda/school-work.org"
+            "~/Documents/org/agenda/pclassic.org")))
+    (setq org-mobile-inbox-for-pull "~/Documents/org/from-mobile.org")
+    (setq org-mobile-directory "~/Documents/MobileOrg")
+    (setq org-mobile-files '("~/Documents/org/agenda/notes.org" "~/Documents/org/agenda/tasks.org"
+                             "~/Documents/org/agenda/work.org"))
     (setq org-modules
           (quote
            (org-bbdb org-bibtex org-gnus org-info org-irc org-mhe org-rmail org-w3m)))
@@ -935,10 +956,10 @@
   (use-package org-ref
     :ensure t
     :init
-    (setf org-ref-bibliography-notes "~/Dropbox/LuceyResearch/articles.org"
-          org-ref-notes-directory "~/Dropbox/LuceyResearch/notes/"
-          org-ref-default-bibliography `("~/Dropbox/LuceyResearch/articles.bib")
-          org-ref-pdf-directory "~/Dropbox/LuceyResearch/pdfs/")
+    (setf org-ref-bibliography-notes "~/Documents/LuceyResearch/articles.org"
+          org-ref-notes-directory "~/Documents/LuceyResearch/notes/"
+          org-ref-default-bibliography `("~/Documents/LuceyResearch/articles.bib")
+          org-ref-pdf-directory "~/Documents/LuceyResearch/pdfs/")
     :config)
 
 
