@@ -2,4 +2,7 @@
 
 
 
-tail $1 | tac | sed -E -n 's/UNISON.*finished prop.*([0-9]{2}:[0-9]{2}:[0-9]{2}).*on (.*$)/\1 \2/p'
+while read line
+do
+  echo $line 
+done < "${1:-/dev/stdin}" | tac | sed -E -n 's/([a-zA-Z 0-9]{7}[0-9]{2}:[0-9]{2}:[0-9]{2}).*((Fatal .*) Lost connection.*|(Failed.*)|Synchronization (complete).*|(Looking).*|(Nothing).*)/\3\4 \1/p' | head -n 1

@@ -5,3 +5,27 @@ alias sound='pavucontrol'
 alias restart-wifi='sudo systemctl restart network-manager'
 alias open='xdg-open'
 alias play='vlc --full-screen'
+
+
+. /home/nate/torch/install/bin/torch-activate
+
+# added by Anaconda3 installer
+export PATH="/home/nate/anaconda3/bin:$PATH"
+
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/home/nate/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/nate/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/nate/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/nate/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+

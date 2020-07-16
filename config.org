@@ -18,10 +18,11 @@
   (require 'package) ;; You might already have this line
   (let* ((no-ssl (and (memq system-type '(windows-nt ms-dos))
                       (not (gnutls-available-p))))
-         (url (concat (if no-ssl "http" "https") "://melpa.org/packages/")))
+         (url (concat (if no-ssl "http" "http") "://melpa.org/packages/")))
     (add-to-list 'package-archives (cons "melpa" url) t))
   (add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
   (add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/"))
+
   (when (< emacs-major-version 24)
     ;; For important compatibility libraries like cl-lib
     (add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
@@ -347,6 +348,9 @@
 
   (use-package multi-term
     :config (setq multi-term-program "/bin/bash"))
+
+  (use-package vterm
+    :load-path ("/home/nate/Git/emacs-libvterm"))
 #+END_SRC
 *** eshell
 #+BEGIN_SRC emacs-lisp
@@ -800,13 +804,32 @@
   (use-package font-latex)
 
   ;; Command for generating pngs of latex equations
+  (defun latex-eq-to-png (equation output-file)
+    (interactive "MEquation: \nFOuput File: ")
+    (let ((file (make-temp-file "latext-to-png" nil ".tex")))
+      (with-temp-file file
+        (insert (format "\\documentclass[convert={outfile=%s,density=1000},border={0cm 0.2cm}]{standalone}\\usepackage{mymacros} \\begin{document}"
+                        output-file))
+        (insert (format "$%s$" equation))
+        (insert "\\end{document}"))
+      (start-process-shell-command
+       "latex-to-png"
+       (get-buffer-create "*latex-to-png compilation*")
+       (concat
+        "cd "
+        temporary-file-directory
+        " && "
+        "pdflatex "
+        "-shell-escape " 
+        file))))
+
   (defun latex-to-png (equation output-file)
     (interactive "MEquation: \nFOuput File: ")
     (let ((file (make-temp-file "latext-to-png" nil ".tex")))
       (with-temp-file file
-        (insert (format "\\documentclass[convert={outfile=%s}]{standalone} \\begin{document}"
+        (insert (format "\\documentclass[convert={outfile=%s,density=1000}]{standalone}\\usepackage{mymacros} \\begin{document}"
                         output-file))
-        (insert (format "$%s$" equation))
+        (insert (format "%s" equation))
         (insert "\\end{document}"))
       (start-process-shell-command
        "latex-to-png"
@@ -823,55 +846,56 @@
 #+BEGIN_SRC emacs-lisp
   (use-package org
     :bind (("C-c r" . org-capture)
-           ("C-c l" . org-store-link)
-           ("C-c a" . org-agenda)
-           ("C-c b" . org-iswitchb)
-           :map org-mode-map
-           ("C-M-<left>" . org-promote-subtree)
-           ("C-M-<right>" . org-demote-subtree)
-           ("C-M-u" . org-up-element)
-           ("C-M-f" . org-forward-element)
-           ("C-M-b" . org-backward-element)
-           ("C-M-d" . org-down-element))
+	   ("C-c l" . org-store-link)
+	   ("C-c a" . org-agenda)
+	   ("C-c b" . org-iswitchb)
+	   :map org-mode-map
+	   ("C-M-<left>" . org-promote-subtree)
+	   ("C-M-<right>" . org-demote-subtree)
+	   ("C-M-u" . org-up-element)
+	   ("C-M-f" . org-forward-element)
+	   ("C-M-b" . org-backward-element)
+	   ("C-M-d" . org-down-element))
     :config
     (setq org-directory "~/Documents/org")
     (setq org-default-notes-file "~/Documents/org/agenda/notes.org")
     (setq org-log-done 'time)
     (setq org-capture-templates
-          '(("W" "Work todo" entry (file+headline "~/Dropbox/org/agenda/work.org" "Tasks")
-             "* TODO %?\t:WORK:\nDEADLINE: %^{Deadline}t\n  %i\n")
-            ("H" "Home todo" entry (file+headline "~/Dropbox/org/agenda/tasks.org" "Tasks")
-             "* TODO %?\t:HOME:\nDEADLINE: %^{Deadline}t\n  %i\n")
-            ("S" "School todo" entry (file "~/Dropbox/org/agenda/school-work.org")
-             "* TODO %?\t:SCHOOL:%^g\nDEADLINE: %^{Deadline}t\n  %i\n")
-            ("P" "PClassic TODO" entry (file+headline "~/Dropbox/org/agenda/pclassic.org" "Tasks")
-             "* TODO %?\t:PCLASSIC:\nDEADLINE: %^{Deadline}t\n  %i\n")
-            ("w" "Work entry" entry (file+headline "~/Dropbox/org/agenda/work.org" "Events")
-             "* %?\n\t:WORK:\nSCHEDULED: %^{Schedule}t\n %i\n")
-            ("h" "Home entry" entry (file+headline "~/Dropbox/org/agenda/work.org" "Events")
-             "* %?\n\t:HOME:\nSCHEDULED: %^{Schedule}t\n %i\n")
-            ("n" "Note" entry (file+datetree "~/Dropbox/org/agenda/notes.org")
-             "* %?\nEntered on %U\n  %i\n")
-            ("l" "Lab notebook" entry (file+datetree "~/Dropbox/org/agenda/lab-notebook.org")
-             "* %^{prompt|No Title}\nEntered on %U\n%? %i\n")))
+	  '(("W" "Work todo" entry (file+headline "~/Dropbox/org/agenda/work.org" "Tasks")
+	     "* TODO %?\t:WORK:\nDEADLINE: %^{Deadline}t\n  %i\n")
+	    ("H" "Home todo" entry (file+headline "~/Dropbox/org/agenda/tasks.org" "Tasks")
+	     "* TODO %?\t:HOME:\nDEADLINE: %^{Deadline}t\n  %i\n")
+	    ("S" "School todo" entry (file "~/Dropbox/org/agenda/school-work.org")
+	     "* TODO %?\t:SCHOOL:%^g\nDEADLINE: %^{Deadline}t\n  %i\n")
+	    ("P" "PClassic TODO" entry (file+headline "~/Dropbox/org/agenda/pclassic.org" "Tasks")
+	     "* TODO %?\t:PCLASSIC:\nDEADLINE: %^{Deadline}t\n  %i\n")
+	    ("w" "Work entry" entry (file+headline "~/Dropbox/org/agenda/work.org" "Events")
+	     "* %?\n\t:WORK:\nSCHEDULED: %^{Schedule}t\n %i\n")
+	    ("h" "Home entry" entry (file+headline "~/Dropbox/org/agenda/work.org" "Events")
+	     "* %?\n\t:HOME:\nSCHEDULED: %^{Schedule}t\n %i\n")
+	    ("n" "Note" entry (file+datetree "~/Dropbox/org/agenda/notes.org")
+	     "* %?\nEntered on %U\n  %i\n")
+	    ("l" "Lab notebook" entry (file+datetree "~/Dropbox/org/agenda/lab-notebook.org")
+	     "* %^{prompt|No Title}\nEntered on %U\n%? %i\n")))
     (setq org-agenda-files
-          (quote
-           ("~/Documents/org/agenda/notes.org" "~/Documents/org/agenda/tasks.org"
-            "~/Documents/org/agenda/work.org" "~/Documents/org/agenda/school-work.org"
-            "~/Documents/org/agenda/pclassic.org")))
+	  (quote
+	   ("~/Documents/org/agenda/notes.org" "~/Documents/org/agenda/tasks.org"
+	    "~/Documents/org/agenda/work.org" "~/Documents/org/agenda/school-work.org"
+	    "~/Documents/org/agenda/pclassic.org")))
     (setq org-mobile-inbox-for-pull "~/Documents/org/from-mobile.org")
     (setq org-mobile-directory "~/Documents/MobileOrg")
     (setq org-mobile-files '("~/Documents/org/agenda/notes.org" "~/Documents/org/agenda/tasks.org"
-                             "~/Documents/org/agenda/work.org"))
+			     "~/Documents/org/agenda/work.org"))
     (setq org-modules
-          (quote
-           (org-bbdb org-bibtex org-gnus org-info org-irc org-mhe org-rmail org-w3m)))
+	  (quote
+	   (org-bbdb org-bibtex org-gnus org-info org-irc org-mhe org-rmail org-w3m)))
     (setq org-src-tab-acts-natively t)
     (setq org-src-window-setup (quote current-window))
     (org-babel-do-load-languages
      'org-babel-load-languages
      '((emacs-lisp . t)
        (python . t)))
+    (setq org-latex-pdf-process '("latexmk -pdflatex='lualatex -shell-escape -interaction nonstopmode' -pdf -f  %f"))
     ;; (setq org-structure-template-alist
   ;;         (quote
   ;;          (("S" "#+BEGIN_SRC emacs-lisp
@@ -925,8 +949,8 @@
   ;;           ("A" "#+ASCII: " "")
   ;;           ("i" "#+INDEX: ?" "#+INDEX: ?")
   ;;           ("I" "#+INCLUDE: %file ?" "<include file=%file markup=\"?\">"))))
-    
-    
+
+
     (defun nates-org-mode-hook ()
       (visual-line-mode t)))
     (add-hook 'org-mode-hook 'nates-org-mode-hook)
@@ -938,8 +962,8 @@
   (use-package eval-in-repl-python
     :config
     (add-hook 'org-mode-hook
-              '(lambda ()
-                 (local-set-key (kbd "C-c p") 'eir-eval-in-python))))
+	      '(lambda ()
+		 (local-set-key (kbd "C-c p") 'eir-eval-in-python))))
 
   (use-package pdf-tools
     :ensure t
@@ -957,14 +981,14 @@
     :ensure t
     :init
     (setf org-ref-bibliography-notes "~/Documents/LuceyResearch/articles.org"
-          org-ref-notes-directory "~/Documents/LuceyResearch/notes/"
-          org-ref-default-bibliography `("~/Documents/LuceyResearch/articles.bib")
-          org-ref-pdf-directory "~/Documents/LuceyResearch/pdfs/")
+	  org-ref-notes-directory "~/Documents/LuceyResearch/notes/"
+	  org-ref-default-bibliography `("~/Documents/LuceyResearch/articles.bib")
+	  org-ref-pdf-directory "~/Documents/LuceyResearch/pdfs/")
     :config)
 
 
 
-         
+
 #+END_SRC
 ** MAGIT
 #+BEGIN_SRC emacs-lisp

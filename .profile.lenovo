@@ -15,7 +15,7 @@ export PATH="/home/nate/.pyenv/bin:$PATH"
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 
-feh --bg-fill /home/nate/Dropbox/Lisp/random-growth/out.png
+feh --bg-fill /home/nate/Documents/Lisp/fish/SWIMMING-0007.png
 
 # source .bashrc
 source ~/.bashrc
