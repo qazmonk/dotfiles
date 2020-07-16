@@ -288,6 +288,9 @@
      ("C-c k" . counsel-ag)
      ("C-x l" . counsel-locate)
      ("C-S-o" . counsel-rhythmbox))
+  (use-package counsel
+    :ensure t)
+
    (use-package flyspell
      :config
      (add-hook 'flyspell-mode-hook (lambda ()
