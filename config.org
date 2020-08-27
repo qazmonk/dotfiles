@@ -1,360 +1,239 @@
-* General Stuff
-  #+BEGIN_SRC emacs-lisp
-    ;; Bootstrap `use-package'
-
-    (setq debug-on-error nil)
-    (setq-default fill-column 90)
-    (global-unset-key (kbd "C-z"))
-    (setq inhibit-splash-screen t)
+* Global
+  #+begin_src emacs-lisp :tangle yes
+    (require 'use-package)
     ;; add custom packages to load path
     (add-to-list 'load-path "~/.emacs.d/lisp")
-
-
+    ;; more custom packages?
     (let ((default-directory  "~/dotfiles/elisp"))
       (normal-top-level-add-subdirs-to-load-path))
-  #+END_SRC
-** Package and Use-Package
-#+BEGIN_SRC emacs-lisp
-  (require 'package) ;; You might already have this line
-  (let* ((no-ssl (and (memq system-type '(windows-nt ms-dos))
-                      (not (gnutls-available-p))))
-         (url (concat (if no-ssl "http" "http") "://melpa.org/packages/")))
-    (add-to-list 'package-archives (cons "melpa" url) t))
-  (add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
-  (add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/"))
 
-  (when (< emacs-major-version 24)
-    ;; For important compatibility libraries like cl-lib
-    (add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
-  (package-initialize)
+    (let* ((no-ssl (and (memq system-type '(windows-nt ms-dos))
+			(not (gnutls-available-p))))
+	   (url (concat (if no-ssl "http" "http") "://melpa.org/packages/")))
+      (add-to-list 'package-archives (cons "melpa" url) t))
+    (add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
+    (add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/"))
+  #+end_src
+** Backups
+#+begin_src emacs-lisp :tangle yes
+(setq backup-directory-alist '(("." . "~/.emacs.d/backup"))
+    backup-by-copying t    ; Don't delink hardlinks
+    version-control t      ; Use version numbers on backups
+    delete-old-versions t  ; Automatically delete excess backups
+    kept-new-versions 20   ; how many of the newest versions to keep
+    kept-old-versions 5    ; and how many of the old
+    )
+#+end_src
+** Appearance
+   #+begin_src emacs-lisp :tangle yes
+     (setq inhibit-startup-screen t)
+     (tool-bar-mode -1)
+     (scroll-bar-mode -1)
+     (menu-bar-mode -1)
+     (global-visual-line-mode 1)
 
+     (defalias 'yes-or-no-p 'y-or-n-p)
 
+     (use-package diminish
+       :ensure t)
 
-  (unless (package-installed-p 'use-package)
-    (package-refresh-contents)
-    (package-install 'use-package))
-  (require 'use-package)
-#+END_SRC
-** Global Configuration
-#+BEGIN_SRC emacs-lisp
-  (use-package backup-each-save
-    :ensure t
-    :init
-    (add-hook 'after-save-hook 'backup-each-save)
-    :config
-    (setq make-backup-files nil))
+     (use-package zenburn-theme
+       :ensure t
+       :config (load-theme 'zenburn t))
 
-  (when window-system 
-    (when tool-bar-mode
-      (tool-bar-mode -1)))
-      ;;; Stefan Monnier <foo at acm.org>. It is the opposite of fill-paragraph    
-  (defun unfill-paragraph (&optional region)
-    "Takes a multi-line paragraph and makes it into a single line of text."
-    (interactive (progn (barf-if-buffer-read-only) '(t)))
-    (let ((fill-column (point-max))
-          ;; This would override `fill-column' if it's an integer.
-          (emacs-lisp-docstring-fill-column t))
-      (fill-paragraph nil region)))
-  (define-key global-map "\M-Q" 'unfill-paragraph)
+     (use-package highlight-parentheses
+       :ensure t
+       :hook ((emacs-lisp-mode lisp-mode) . highlight-parentheses-mode))
 
 
+   #+end_src
 
-  ;;change keys for mac keyboard
-  (when (equal system-type 'darwin)
-    (setq mac-command-modifier 'meta)
-    (setq mac-option-modifier 'super))
-
-  ;;GET THOSE GOD DAMN TABS OUT OF HERE
+** Keyboard and Movement
+#+begin_src emacs-lisp :tangle yes
+  (setq mac-option-key-is-meta nil
+	mac-command-key-is-meta t
+	mac-command-modifier 'meta
+	mac-option-modifier 'super)
   (setq-default indent-tabes-mode nil)
 
-  (add-hook 'text-mode-hook (lambda () 
-                              (flyspell-mode)))
+    (defun push-mark-no-activate ()
+      "Pushes `point' to `mark-ring' and does not activate the region
+	   Equivalent to \\[set-mark-command] when \\[transient-mark-mode] is disabled"
+      (interactive)
+      (push-mark (point) t nil)
+      (message "Pushed mark to ring"))
 
-  (global-set-key (kbd "C-'") 'set-mark-command)
+    (global-set-key (kbd "C-`") 'push-mark-no-activate)
 
-  (global-set-key (kbd "<C-M-right>") 'windmove-right)
-  (global-set-key (kbd "<C-M-left>") 'windmove-left)
-  (global-set-key (kbd "<C-M-up>") 'windmove-up)
-  (global-set-key (kbd "<C-M-down>") 'windmove-down)
+    (defun jump-to-mark ()
+      "Jumps to the local mark, respecting the `mark-ring' order.
+	  This is the same as using \\[set-mark-command] with the prefix argument."
+      (interactive)
+      (set-mark-command 1))
+    (global-set-key (kbd "M-SPC") 'jump-to-mark)
 
-  (defun push-mark-no-activate ()
-    "Pushes `point' to `mark-ring' and does not activate the region
-         Equivalent to \\[set-mark-command] when \\[transient-mark-mode] is disabled"
-    (interactive)
-    (push-mark (point) t nil)
-    (message "Pushed mark to ring"))
-
-  (global-set-key (kbd "C-`") 'push-mark-no-activate)
-
-  (defun jump-to-mark ()
-    "Jumps to the local mark, respecting the `mark-ring' order.
-        This is the same as using \\[set-mark-command] with the prefix argument."
-    (interactive)
-    (set-mark-command 1))
-  (global-set-key (kbd "M-SPC") 'jump-to-mark)
-
-
-  (defadvice yes-or-no-p (around prevent-dialog activate)
-    "Prevent yes-or-no-p from activating a dialog"
-    (let ((use-dialog-box nil))
-      ad-do-it))
-  (defadvice y-or-n-p (around prevent-dialog-yorn activate)
-    "Prevent y-or-n-p from activating a dialog"
-    (let ((use-dialog-box nil))
-      ad-do-it))
-
-  (setq glyphless-char-display-control 
-        (quote ((format-control . hex-code) (no-font . hex-code))))
-
-  (global-auto-revert-mode t)
+  (use-package imenu-anywhere
+       :ensure t
+       :bind (("M-i" . imenu-anywhere))
+       :config
+       (defun my-merge-imenu ()
+	 (interactive)
+	 (let ((mode-imenu (imenu-default-create-index-function))
+	       (custom-imenu (imenu--generic-function imenu-generic-expression)))
+	   (append mode-imenu custom-imenu))))
 
 
-  ; Add convenient bindings for splitting windows
-  (global-set-key (kbd "C-x h") 'split-window-horizontally)
-  (global-set-key (kbd "C-x v") 'split-window-vertically)
+  (use-package hydra
+    :ensure t
+    :config 
+    (defhydra hydra-window-stuff (:hint nil)
+      "
+	    Split: _v_ert  _h_:horz
+	   Delete: _c_lose  _o_nly
+    Switch Window: arrow keys
+	  Buffers: _p_revious  _n_ext  _b_:select  _f_ind-file  _F_projectile
+	     Move: _a_:up  _z_:down  _i_menu"
 
-  ;this helps performance
-  ;(setq auto-window-vscroll nil)
 
-#+END_SRC
-** Themes
-#+BEGIN_SRC emacs-lisp
-  (use-package sublime-themes
-    :ensure t)
+      ("z" scroll-up-line)
+      ("a" scroll-down-line)
+      ("i" idomenu)
 
-  (use-package custom
-    :after sublime-themes
-    :config
-    ;; (setq custom-enabled-themes (quote (sanityinc-tomorrow-night)))
-    ;; (setq custom-safe-themes
-    ;;       (quote
-    ;;        ("e0d42a58c84161a0744ceab595370cbe290949968ab62273aed6212df0ea94b4"
-    ;;         "3cd28471e80be3bd2657ca3f03fbb2884ab669662271794360866ab60b6cb6e6"
-    ;;         "3cc2385c39257fed66238921602d8104d8fd6266ad88a006d0a4325336f5ee02"
-    ;;         "e9776d12e4ccb722a2a732c6e80423331bcb93f02e089ba2a4b02e85de1cf00e"
-    ;;         "72a81c54c97b9e5efcc3ea214382615649ebb539cb4f2fe3a46cd12af72c7607"
-    ;;         "58c6711a3b568437bab07a30385d34aacf64156cc5137ea20e799984f4227265"
-    ;;         "3d5ef3d7ed58c9ad321f05360ad8a6b24585b9c49abcee67bdcbb0fe583a6950"
-    ;;         "b3775ba758e7d31f3bb849e7c9e48ff60929a792961a2d536edec8f68c671ca5"
-    ;;         "9b59e147dbbde5e638ea1cde5ec0a358d5f269d27bd2b893a0947c4a867e14c1"
-    ;;         "8db4b03b9ae654d4a57804286eb3e332725c84d7cdab38463cb6b97d5762ad26"
-    ;;         "1e3b2c9e7e84bb886739604eae91a9afbdfb2e269936ec5dd4a9d3b7a943af7f"
-    ;;         "c4465c56ee0cac519dd6ab6249c7fd5bb2c7f7f78ba2875d28a50d3c20a59473"
-    ;;         "82d2cac368ccdec2fcc7573f24c3f79654b78bf133096f9b40c20d97ec1d8016"
-    ;;         "1b8d67b43ff1723960eb5e0cba512a2c7a2ad544ddb2533a90101fd1852b426e"
-    ;;         "bb08c73af94ee74453c90422485b29e5643b73b05e8de029a6909af6a3fb3f58"
-    ;;         "06f0b439b62164c6f8f84fdda32b62fb50b6d00e8b01c2208e55543a6337433a"
-    ;;         "628278136f88aa1a151bb2d6c8a86bf2b7631fbea5f0f76cba2a0079cd910f7d"
-    ;;         "68d36308fc6e7395f7e6355f92c1dd9029c7a672cbecf8048e2933a053cf27e6"
-    ;;         "3dafeadb813a33031848dfebfa0928e37e7a3c18efefa10f3e9f48d1993598d3"
-    ;;         "05c3bc4eb1219953a4f182e10de1f7466d28987f48d647c01f1f0037ff35ab9a" 
-    ;;         default)))
-    ;; (setq custom-theme-load-path
-    ;;       (quote
-    ;;        ("~/.emacs.d/themes"
-    ;;         "/Users/Nate/.emacs.d/elpa/color-theme-sanityinc-tomorrow-20160413.150/"
-    ;;         "/Users/Nate/.emacs.d/elpa/monokai-theme-20160419.1444/"
-    ;;         "/Users/Nate/.emacs.d/elpa/zenburn-theme-20160416.1011/"
-    ;;         custom-theme-directory
-    ;;         "/Users/Nate/.emacs.d/emacs-color-theme-solarized"
-    ;;         "/home/nate/.emacs.d/emacs-color-theme-solarized"
-    ;;         "/home/nate/.emacs.d/themes")))
+      ("<left>" windmove-left)
+      ("<down>" windmove-down)
+      ("<up>" windmove-up)
+      ("<right>" windmove-right)
 
+      ("p" previous-buffer)
+      ("n" next-buffer)
+      ("b" ido-switch-buffer) 
+      ("f" ido-find-file)
+      ("F" projectile-find-file)
     
-    (if (display-graphic-p) 
-        (progn
-          (dolist (theme custom-enabled-themes)
-            (disable-theme theme))
-          (load-theme 'wilson t))
-      (progn 
-        (dolist (theme custom-enabled-themes)
-          (disable-theme theme))      
-        (load-theme 'solarized t))))
+      ("h" split-window-right)
+      ("v" split-window-below)
 
-#+END_SRC
-* Minor Modes
-#+BEGIN_SRC emacs-lisp
-  (use-package exec-path-from-shell
+      ("c" delete-window)
+      ("o" delete-other-windows)
+
+      ("q" nil))
+    :bind ("s-l" . hydra-window-stuff/body))
+
+
+  (use-package avy
     :ensure t
-    :demand t
-    :config (exec-path-from-shell-initialize))
-
-  (use-package help-fns+
-    :load-path "../dotfiles/elisp/help-fns+/help-fns+.el"
-    :demand t)
-
-  (use-package semantic
-    :ensure t
-    :demand t)
-
-
-  (use-package linum
-    :init
-    (add-hook 'prog-mode-hook 'linum-mode)
     :config
-    (setf linum-format "%3i"))
+    (defhydra goto (:color blue :hint nil)
+      "
+  Goto:
+  ^Char^              ^Word^                
+  ^^^^^^^^----------------------------------
+  _c_: 2 chars        _w_: word by char     
+  _C_: char           _W_: some word        
+  _L_: char in line   _s_: subword by char  
+  ^  ^                _S_: some subword     
+  ------------------------------------------
+  _l_: avy-goto-line
+  "
+      ("c" avy-goto-char-2)
+      ("C" avy-goto-char)
+      ("L" avy-goto-char-in-line)
+      ("w" avy-goto-word-1)
+      ;; jump to beginning of some word
+      ("W" avy-goto-word-0)
+      ;; jump to subword starting with a char
+      ("s" avy-goto-subword-1)
+      ;; jump to some subword
+      ("S" avy-goto-subword-0)
 
+      ("l" avy-goto-line)  )
 
-   ;; (use-package smex
-   ;;   :ensure t
-   ;;   :config
-   ;;   (smex-initialize)
-   ;;   (global-set-key (kbd "C-c C-c M-x") 'execute-extended-command) ; this is the old M-x
-   ;;   :bind (("M-x" . smex)
-   ;;          ("M-X" . smex-major-mode-commands)))
+    (global-set-key (kbd "s-g") 'goto/body))
 
-  (use-package ace-jump-mode
-     :ensure t
-     :config
-     (setq ace-jump-mode-scope 'window)
-     (define-key global-map (kbd "C-c SPC") 'ace-jump-mode))
+#+end_src
 
-   (use-package image+
-     :config
-     (imagex-global-sticky-mode 1)
-     :bind (("C-+" . imagex-sticky-zoom-in)
-            ("C--" . imagex-sticky-zoom-out)))
-   (use-package neotree
-     :ensure t
-     :bind ([f8] . neotree-toggle)
-     :config
-     (setq neo-theme (quote nerd)))
+** Command Completion
+#+begin_src emacs-lisp :tangle yes
+(use-package ivy
+  :ensure t
+  :diminish ivy-mode
+  :bind (("C-c C-r" . ivy-resume))
+  :config (ivy-mode t))
 
-   (use-package multi-scratch
-     :load-path "~/dotfiles/elisp/multi-scratch/multi-scratch.el")
-   (use-package paredit
-     :ensure t
-     :load-path "~/.emacs.d/paredit/"
-     :commands enable-paredit-mode)
-   (use-package imenu-anywhere
-     :ensure t
-     :bind (("M-i" . imenu-anywhere))
-     :config
-     (defun my-merge-imenu ()
-       (interactive)
-       (let ((mode-imenu (imenu-default-create-index-function))
-             (custom-imenu (imenu--generic-function imenu-generic-expression)))
-         (append mode-imenu custom-imenu))))
-   ;; ;;MINIMAP
-   ;; (when window-system
-   ;;   (load "natesminimap.el")
-   ;;   (scroll-bar-mode -1)
-   ;;   (Setq minimap-width-fraction 0.1)
-   ;;   (setq minimap-minimum-width 20)
-   ;;   (minimap-mode)
-   ;;   (defun minimap-toggle ()
-   ;;     "Toggle minimap for current buffer."
-   ;;     (interactive)
-   ;;     (if (not (get-buffer-window minimap-buffer-name))
-   ;;         (progn (minimap-create)
-   ;;                (setf minimap-exists t))
-   ;;       (progn (minimap-kill)
-   ;;              (setf minimap-exists t)))))
-   ;; (use-package ido
-    ;;   :ensure t
-   ;;   :bind (("C-x C-f" . ido-find-file))
-   ;;   :config
-   ;;   (ido-mode t)
-   ;;   (ido-everywhere)
-   ;;   (setq ido-mode (quote both))
-   ;;   (setq ido-enable-flex-matching t))
-   ;; (use-package ido-completing-read+
-   ;;   :ensure t
-   ;;   :config
-   ;;   (require 'ido)
-   ;;   (ido-ubiquitous-mode t)
-   ;;   (put 'dired-do-rename 'ido 'find-file)
-   ;;   (put 'dired-do-copy 'ido 'find-file))
+(use-package counsel
+  :ensure t
+  :bind (("M-x" . counsel-M-x)
+	 ("C-x C-f" . counsel-find-file)
+	 ("C-x b" . counsel-switch-buffer)))
 
-   (use-package ivy
-     :ensure t
-     :init
-     (ivy-mode)
-     :config
-     (setq ivy-use-virtual-vuffers t)
-     (setq ivy-count-format "(%d/%d) ")
-     :bind
-     (("C-s" . swiper)
-      ("M-x" . counsel-M-x)
-      ("C-x C-f" . counsel-find-file)
-      ("<f1> f" . counsel-describe-function)
-      ("<f1> v" . counsel-describe-variable)
-      ("<f1> l" . counsel-find-library)
-      ("<f2> i" . counsel-info-lookup-symbol)
-      ("<f2> u" . counsel-unicode-char))
-     
-     ("C-c g" . counsel-git)
-     ("C-c j" . counsel-git-grep)
-     ("C-c k" . counsel-ag)
-     ("C-x l" . counsel-locate)
-     ("C-S-o" . counsel-rhythmbox))
-  (use-package counsel
-    :ensure t)
+(use-package swiper
+  :ensure t
+  :bind (("C-s" . swiper)))
 
-   (use-package flyspell
-     :config
-     (add-hook 'flyspell-mode-hook (lambda ()
-                                     (define-key flyspell-mode-map (kbd "M-<f1>")
-                                       #'flyspell-check-previous-highlighted-word))))
+(use-package ivy-hydra
+  :ensure t)
 
-   ;; adaptive-fill-mode
-   (setq adaptive-fill-mode t)
+#+end_src
+** Text Completion and Expansion
+   #+begin_src emacs-lisp :tangle yes
+     (use-package company
+       :ensure t
+       :bind (("C-<tab>" . company-complete)
+	      :map company-active-map
+		   ("C-n" . company-select-next)
+		   ("C-p" . company-select-previous))
 
-   (use-package autoinsert
-     :config
-     (auto-insert-mode)
-     (defun autoinsert-yas-expand ()
-       "Replace text in yasnipped template."
-       (yas-expand-snippet (buffer-string) (point-min) (point-max)))
-     (setq auto-insert-directory "~/dotfiles/autoinserts/")
-     (define-auto-insert "\\.tex$" "standard.tex"))
-
-   (use-package highlight-parentheses
-     :ensure t
-     :config
-     (setq hl-paren-colors
-           (quote
-            ("PaleGreen1" "SpringGreen1" "SpringGreen3" "SpringGreen4"))))
-
-  (use-package re-builder
-     :config
-     (setq reb-re-syntax (quote string)))
-
-   (use-package beacon ; disabled for performance reasons
-     :ensure t
-     :if window-system
-     :config
-     (setf beacon-color (face-background 'cursor))
-     (setq ring-bell-function 'beacon-blink)
-     (beacon-mode nil))
-
-   (use-package undo-tree
+       :config
+       (setq company-ide-delay 0)
+       (global-company-mode t)
+       (setq company-backends
+	     '((company-files 
+		company-keywords 
+		company-capf
+		company-dabbrev-code))))
+     (use-package yasnippet
+       :ensure t
+       :config
+       (yas-global-mode))
+     (use-package yasnippet-snippets
+       :ensure t)
+   #+end_src
+** Undo
+#+begin_src emacs-lisp :tangle yes
+(use-package undo-tree
      :demand
      :ensure t
      :init
      (global-undo-tree-mode 1)
      (setf undo-tree-auto-save-history nil)
      (setf undo-tree-history-directory-alist '((".*" . "~/.emacs.d/undo-tree-history/"))))
-#+End_SRC
+#+end_src
+** PATH
+#+begin_src emacs-lisp :tangle yes
+(use-package exec-path-from-shell
+    :ensure t
+    :demand t
+    :config (exec-path-from-shell-initialize))
+#+end_src
 * Major Modes
-** Shells 
-#+BEGIN_SRC emacs-lisp
-  (use-package ansi-color 
-    :config
-    (setq ansi-color-faces-vector
-         [default bold shadow italic underline bold bold-italic bold])
-    (setq ansi-color-names-vector
-          ["gray100" "#d54e53" "light green" "light green" "#7aa6da" "#c397d8" "#70c0b1" "#000000"]))
-  (use-package term
-    :config
-    (setq term-buffer-maximum-size 0))
+** Dired
+#+begin_src emacs-lisp :tangle yes
+(use-package dired-subtree
+  :ensure t)
 
-  (use-package multi-term
-    :config (setq multi-term-program "/bin/bash"))
-
+(setq dired-listing-switches "-alh")
+#+end_src
+** Tramp
+#+begin_src emacs-lisp :tangle yes
+(use-package tramp
+  :config
+  (add-to-list 'tramp-remote-path 'tramp-own-remote-path))
+#+end_src
+** Shell
+#+begin_src emacs-lisp :tangle yes
   (use-package vterm
-    :load-path ("/home/nate/Git/emacs-libvterm"))
-#+END_SRC
+    :ensure t)
+#+end_src
 *** eshell
 #+BEGIN_SRC emacs-lisp
   (use-package eshell
@@ -405,42 +284,138 @@
     (setq eshell-prompt-function 'fancy-prompt)
     (setq eshell-highlight-prompt nil))
 #+END_SRC
-*** shell
+** Magit
+
+   #+begin_src emacs-lisp :tangle yes
+     (use-package magit
+       :ensure t)
+   #+end_src
+** LATEX
+#+begin_src emacs-lisp :tangle yes
+  (use-package company-auctex
+    :ensure t)
+
+  (use-package tex
+    :ensure auctex)
+
+  (use-package font-latex)
+
+  ;; Command for generating pngs of latex equations
+  (defun latex-eq-to-png (equation output-file)
+    (interactive "MEquation: \nFOuput File: ")
+    (let ((file (make-temp-file "latext-to-png" nil ".tex")))
+      (with-temp-file file
+	(insert (format "\\documentclass[convert={outfile=%s,density=1000},border={0cm 0.2cm}]{standalone}\\usepackage{mymacros} \\begin{document}"
+			output-file))
+	(insert (format "$%s$" equation))
+	(insert "\\end{document}"))
+      (start-process-shell-command
+       "latex-to-png"
+       (get-buffer-create "*latex-to-png compilation*")
+       (concat
+	"cd "
+	temporary-file-directory
+	" && "
+	"pdflatex "
+	"-shell-escape " 
+	file))))
+
+  (defun latex-to-png (equation output-file)
+    (interactive "MEquation: \nFOuput File: ")
+    (let ((file (make-temp-file "latext-to-png" nil ".tex")))
+      (with-temp-file file
+	(insert (format "\\documentclass[convert={outfile=%s,density=1000}]{standalone}\\usepackage{mymacros} \\begin{document}"
+			output-file))
+	(insert (format "%s" equation))
+	(insert "\\end{document}"))
+      (start-process-shell-command
+       "latex-to-png"
+       (get-buffer-create "*latex-to-png compilation*")
+       (concat
+	"cd "
+	temporary-file-directory
+	" && "
+	"pdflatex "
+	"-shell-escape " 
+	file))))
+
+#+end_src
+** git
 #+BEGIN_SRC emacs-lisp
-(add-hook 'shell-mode-hook (lambda ()
-                             (setq-local company-backends 
-                                         '((company-files
-                                            company-dabbrev-code)))))
+(defun nates-git-ignore-mode ()
+  (add-to-list (make-local-variable 'company-backends) 'company-files))
+(add-to-list 'auto-mode-alist '("\\.gitignore\\'" . nates-git-ignore-mode))
 #+END_SRC
-** Programming Modes
-#+BEGIN_SRC emacs-lisp
-  (use-package compile
+** Programming
+*** Emacs Lisp
+    #+begin_src emacs-lisp :tangle yes
+      (use-package paredit
+	:ensure t
+	:hook ((emacs-lisp-mode . paredit-mode)
+	       (eval-expression-minibuffer-setup . paredit-mode)
+	       (lisp-mode . paredit-mode))
+	:bind (("C-)" . paredit-forward-slurp-sexp)
+	       ("C-(" . paredit-backward-slurp-sexp)
+	       ("C-}" . paredit-forward-barf-sexp)
+	       ("C-{" . paredit-backward-barf-sexp)))
+
+      (use-package eldoc
+	:ensure t
+	:hook (emacs-lisp-mode . eldoc-mode))
+   #+end_src
+*** Org
+    #+begin_src emacs-lisp :tangle yes
+      (use-package org
+	  :bind (("C-c r" . org-capture)
+		 ("C-c l" . org-store-link)
+		 ("C-c a" . org-agenda)
+		 ("C-c b" . org-iswitchb)
+		 :map org-mode-map
+		 ("C-M-<left>" . org-promote-subtree)
+		 ("C-M-<right>" . org-demote-subtree)
+		 ("C-M-u" . org-up-element)
+		 ("C-M-f" . org-forward-element)
+		 ("C-M-b" . org-backward-element)
+		 ("C-M-d" . org-down-element))
+	  :config
+	  (setq org-directory "~/Documents/org")
+	  (setq org-default-notes-file "~/Documents/org/agenda/notes.org")
+	  (setq org-log-done 'time)
+
+	  (setq org-agenda-files
+		(quote
+		 ("~/Documents/org/agenda/notes.org" "~/Documents/org/agenda/tasks.org"
+		  "~/Documents/org/agenda/work.org" "~/Documents/org/agenda/school-work.org"
+		  "~/Documents/org/agenda/pclassic.org")))
+	  (setq org-modules
+		(quote
+		 (org-bbdb org-bibtex org-gnus org-info org-irc org-mhe org-rmail org-w3m org-tempo)))
+	  (org-babel-do-load-languages
+	   'org-babel-load-languages
+	   '((emacs-lisp . t)
+	     (python . t)))
+	  (setq org-latex-pdf-process '("latexmk -pdflatex='lualatex -shell-escape -interaction nonstopmode' -pdf -f  %f")))
+    #+end_src
+*** LSP
+#+begin_src emacs-lisp :tangle yes
+  (use-package lsp-mode
+    :ensure t
     :config
-    (setq compilation-auto-jump-to-first-error t)
-    (setq compilation-message-face (quote default))
-    (setq special-display-buffer-names
-          '("*compilation*"))
+    (use-package lsp-ui
+      :ensure t
+      :hook ((lsp-mode . lsp-ui-mode)))
+    (use-package company-lsp
+      :ensure t
+      :config (push 'company-lsp company-backends))
 
-    (setq special-display-function
-          (lambda (buffer &optional args)
-            (split-window)
-            (get-buffer-window buffer 0)))
+    (lsp-register-client
+      (make-lsp-client :new-connection (lsp-tramp-connection "pyls")
+		       :major-modes '(python-mode)
+		       :remote? t
+		       :server-id 'pyls-remote))
+    :hook ((python-mode . lsp-mode)))
+#+end_src
 
-    ;; Close the compilation window when compilation succedes
-    (setq 
-     compilation-exit-message-function
-     (lambda (status code msg)
-       ;; If M-x compile exists with a 0
-       (when (and (eq status 'exit) (zerop code))
-         ;; then bury the *compilation* buffer, so that C-x b doesn't go there
-         ;;(switch-to-prev-buffer (get-buffer-window "*compilation*") 'kill)
-         (bury-buffer)
-         ;; and delete the *compilation* window
-
-         (delete-window (get-buffer-window (get-buffer "*compilation*"))))
-       ;; Always return the anticipated result of compilation-exit-message-function
-       (cons msg code))))
-#+END_SRC
 *** CMAKE
 #+BEGIN_SRC emacs-lisp
   (use-package cmake-mode :ensure t)
@@ -491,225 +466,7 @@
     (add-to-list 'auto-mode-alist '("\\.tpp\\'" . c++-mode))
     (add-to-list 'auto-mode-alist '("\\.cc\\'" . c++-mode)))
 #+END_SRC
-*** PYTHON
-#+BEGIN_SRC emacs-lisp
-  (eval-after-load "semantic"
-    (remove-hook 'python-mode-hook 'wisent-python-default-setup))
-  (use-package python
-    :demand t
-    :config
-    (defun python-align-args (beg end)
-                  (interactive "r")
-                  (align-regexp beg end "\\(\\s-*\\)\\(type\\|action\\|choices\\)[^\"]*?=" 1 1 t)
-                  (align-regexp beg end "\\(\\s-*\\)default[^\"]*=" 1 1 t)
-                  (align-regexp beg end "\\(\\s-*\\)help[^\"]*=" 1 1 t))
-    (add-hook 'python-mode-hook 
-              (lambda () 
-                (highlight-indent-guides-mode)
-                (setq imenu-create-index-function 'python-imenu-create-index)
-                ;(setq company-backends '((elpy-company-backend :with :separate company-dabbrev-code) company-files))
-                (setq company-backends '(elpy-company-backend company-dabbrev-code company-files))))
-    (defun python3-shell ()
-      (interactive)
-      (run-python "python3" t t)))
 
-  (use-package pyenv-mode
-    :ensure t
-    :init 
-    (add-to-list 'exec-path "~/.pyenv/shims/")
-    (add-to-list 'exec-path "~/.pyenv/bin/")
-    (add-hook 'python-mode-hook 'pyenv-mode))
-
-  (use-package elpy
-    :ensure t
-    :init (elpy-enable))
-
-  (use-package highlight-indent-guides
-    :ensure t
-    :config
-    (setq highlight-indent-guides-method 'character))
-#+END_SRC
-*** LISP
-#+BEGIN_SRC emacs-lisp
-  (setq inferior-lisp-program (executable-find "sbcl"))
-  (use-package slime-company
-    :ensure t)
-  (use-package slime
-    :ensure t
-    :config
-    (add-to-list 'slime-contribs 'inferior-slime)
-    (add-to-list 'slime-contribs 'slime-fancy)
-    (add-to-list 'slime-contribs 'slime-autodoc)
-    (add-to-list 'slime-contribs 'slime-company)
-    (slime-setup)
-    (setq slime-use-autodoc-mode nil)
-    (setq slime-company-major-modes
-          (quote
-           (lisp-mode clojure-mode slime-repl-mode 
-                      scheme-mode emacs-lisp-mode))))
-
-  (defvar electrify-return-match
-    "[\]}\)\"]"
-    "If this regexp matches the text after the cursor, do an \"electric\"
-      return.")
-  (defun electrify-return-if-match (arg)
-    "If the text after the cursor matches `electrify-return-match' then
-      open and indent an empty line between the cursor and the text.  Move the
-      cursor to the new line."
-    (interactive "P")
-    (let ((case-fold-search nil))
-      (if (looking-at electrify-return-match)
-          (save-excursion (newline-and-indent)))
-      (newline arg)
-      (indent-according-to-mode)))
-
-  (defun nates-slime-restart ()
-    (interactive)
-    (slime-quit-lisp)
-    (kill-buffer "*inferior-lisp*")
-    (slime))
-
-  (defun quicklisp-add-project ()
-    (interactive)
-    (slime-eval-with-transcript
-     `(swank:interactive-eval-region
-       ,(format "(pushnew \"%s\" ql:*local-project-directories* ) (ql:register-local-projects)"
-                default-directory))))
-
-
-  (defun nates-general-lisp-mode ()
-    (company-mode)
-    (enable-paredit-mode)
-    (show-paren-mode t)   
-    (highlight-parentheses-mode t)
-    (local-set-key (kbd "RET") 'electrify-return-if-match)
-    (define-key company-active-map (kbd "\C-n") 'company-select-next)
-    (define-key company-active-map (kbd "\C-p") 'company-select-previous)
-    (define-key company-active-map (kbd "\C-d") 'company-show-doc-buffer)
-    (define-key company-active-map (kbd "M-.") 'company-show-location)
-    ;; (setq-local company-backends '(company-files
-    ;;                                (company-keywords 
-    ;;                                 company-dabbrev-code)))
-    )
-
-  (defun nates-lisp-mode ()
-    (slime-mode)
-    (local-set-key (kbd "C-M-S-s-r")
-                   (lambda ()
-                     (interactive)
-                     (shell-command "osascript ~/Dropbox/AppleScript/refresh-preview.scpt")))
-    (set (make-local-variable 'lisp-indent-function)
-         'common-lisp-indent-function)
-    (nates-general-lisp-mode)
-    (slime-autodoc-mode))
-
-  (defun nates-inferior-lisp-mode ()
-    (define-key slime-repl-mode-map
-      (read-kbd-macro paredit-backward-delete-key) nil)
-    (eldoc-mode t)
-    (message "turning on eldoc-mode")
-    (local-set-key (kbd "C-M-S-s-r")
-                   (lambda ()
-                     (interactive)
-                     (shell-command "osascript ~/Dropbox/AppleScript/refresh-preview.scpt")))
-    (nates-general-lisp-mode))
-
-
-  (defun nates-emacs-lisp-mode ()
-    (eldoc-mode t)
-    (nates-general-lisp-mode)
-    (setq-local company-backends
-                '(company-elisp
-                  company-files
-                  (company-keywords 
-                   company-dabbrev-code))))
-
-  (add-hook 'lisp-mode-hook 'nates-lisp-mode)
-
-  (add-hook 'emacs-lisp-mode-hook 'nates-emacs-lisp-mode)
-  (add-hook 'slime-repl-mode-hook 'nates-inferior-lisp-mode)
-  (defun nates-slime ()
-    (interactive)
-    (save-excursion
-      (slime))
-    (eldoc-mode t))
-  ;; (add-hook 'slime-mode-hook
-  ;;           (lambda ()
-  ;;             (unless (slime-connected-p)
-  ;;               (print (current-buffer))
-  ;;               (unless (equalp (current-buffer) (get-buffer "*scratch*"))
-  ;;                 (save-excursion (slime))))))
-
-  (add-to-list 'auto-mode-alist '("\\.j\\'" . lisp-mode))
-
-  (eval-after-load 'slime
-    `(define-key slime-mode-map (kbd "M-?") nil))
-
-  (font-lock-add-keywords 'lisp-mode '(("let\\+" . font-lock-keyword-face)))
-  (require 'cl)
-
-#+END_SRC
-*** MATLAB
-#+BEGIN_SRC emacs-lisp
-  (use-package company-semantic
-    :config
-    (push 'matlab-mode company-semantic-modes))
-
-  (use-package matlab
-    :load-path "~/dotfiles/elisp/matlab-emacs-src/"
-    :config
-    ;(require 'matlab-load)
-    (setq mlint-programs
-     (quote
-      ("/Applications/MATLAB_R2015b.app/bin/maci64/mlint" "/usr/local/MATLAB/R2017a/bin/glnxa64/mlint")))
-    (setq matlab-shell-command-switches (quote ("-nodesktop -nosplash")))
-    (setq matlab-functions-have-end t)
-    (defun matlab-set-breakpoint ()
-      (interactive)
-      (matlab-shell-run-command (format "dbstop in %s at %d" 
-                                        (file-name-nondirectory (buffer-file-name))
-                                        (line-number-at-pos))))
-
-    (defun matlab-set-condition-breakpoint (condition)
-      (interactive "sEnter condition: ")
-      (message (format "dbstop in %s at %d if (%s)" 
-                       (file-name-nondirectory (buffer-file-name))
-                       (line-number-at-pos)
-                       condition))  (matlab-shell-run-command (format "dbstop in %s at %d if (%s)" 
-                                                                      (file-name-nondirectory (buffer-file-name))
-                                                                      (line-number-at-pos)
-                                                                      condition)))
-
-    ;;(matlab-cedet-setup)
-    ;; (push (cons 'matlab-mode 'semantic-default-matlab-setup)
-    ;;       semantic-new-buffer-setup-functions)
-
-    
-    (defun nates-matlab-mode ()
-      (mlint-minor-mode t)
-      (setq-local company-backends 
-                  '(company-semantic
-                    company-files
-                    (company-keywords 
-                     company-dabbrev-code)))
-      (matlab-toggle-show-mlint-warnings))
-
-
-    (defun nates-matlab-shell-mode ()
-      (setq-local company-backends 
-                  '(company-files
-                    company-matlab-shell
-                    (company-keywords 
-                     company-dabbrev-code))))
-    (add-hook 'matlab-mode-hook 'nates-matlab-mode)
-    (add-hook 'matlab-shell-mode-hook 'nates-matlab-shell-mode))
-#+END_SRC
-*** JAVASCRIPT
-#+BEGIN_SRC emacs-lisp
-  (use-package js
-    :config
-    (setq js-indent-level 2))
-#+END_SRC
 *** BASH
 #+BEGIN_SRC emacs-lisp
   (use-package sh-script
@@ -717,314 +474,4 @@
     :config
     (add-to-list 'auto-mode-alist 
                  '("\\.bashrc.*" . shell-script-mode)))
-#+END_SRC
-*** HTML
-#+BEGIN_SRC emacs-lisp
-    (use-package tagedit
-      :ensure t
-      :config
-      (eval-after-load "sgml-mode"
-        '(progn (tagedit-add-paredit-like-keybindings)
-                (add-hook 'html-mode-hook (lambda () (tagedit-mode 1))))))
-#+END_SRC
-** LATEX
-#+BEGIN_SRC emacs-lisp
-  (use-package company-auctex
-    :ensure t)
-
-  (use-package tex
-    :ensure auctex
-    :config
-    (setq LaTeX-indent-environment-list
-          (quote
-           (("verbatim" current-indentation)
-            ("verbatim*" current-indentation)
-            ("tabu" LaTeX-indent-tabular)
-            ("tabular" LaTeX-indent-tabular)
-            ("tabular*" LaTeX-indent-tabular)
-            ("align" LaTeX-indent-tabular)
-            ("align*" LaTeX-indent-tabular)
-            ("array" LaTeX-indent-tabular)
-            ("eqnarray" LaTeX-indent-tabular)
-            ("eqnarray*" LaTeX-indent-tabular)
-            ("displaymath")
-            ("equation")
-            ("equation*")
-            ("picture")
-            ("tabbing")
-          ("table")
-          ("table*"))))
-
-      (setq TeX-auto-save t)
-      (setq TeX-parse-self t)
-                                            ;(setq-default TeX-master nil)
-      (add-hook 'LaTeX-mode-hook 'visual-line-mode)
-      (add-hook 'LaTeX-mode-hook 'flyspell-mode)
-      (add-hook 'LaTeX-mode-hook 'LaTeX-math-mode)
-      (add-hook 'LaTeX-mode-hook 'turn-on-reftex)
-      (setq reftex-plug-into-AUCTeX t)
-      (setq TeX-PDF-mode t)
-      (setq LaTeX-command-style '(("" "%(PDF)%(latex) -file-line-error %S%(PDFout)"))) 
-
-      ;; Use Skim as viewer, enable source <-> PDF sync
-      ;; make latexmk available via C-c C-c
-      ;; Note: SyncTeX is setup via ~/.latexmkrc (see below)
-      (setq TeX-view-program-selection '((output-pdf "PDF Viewer")))
-
-      (if (equal system-type 'darwin)
-          (progn 
-            (add-hook 'LaTeX-mode-hook (lambda ()
-                                         (setq-local company-backends 
-                                                     '(company-files
-                                                       (company-keywords 
-                                                        company-dabbrev)))
-                                         (auto-fill-mode -1)
-                                         (company-auctex-init)
-                                         (push
-                                          '("latexmk" "latexmk -pdf %s" TeX-run-TeX nil t
-                                            :help "Run latexmk on file")
-                                          TeX-command-list)))
-            (add-hook 'TeX-mode-hook '(lambda () (setq TeX-command-default "latexmk")))
-            (setq TeX-view-program-list
-                  '(("PDF Viewer"
-                     "/Applications/Skim.app/Contents/SharedSupport/displayline -b -g %n %o %b"))))
-        (progn
-          (setq TeX-view-program-list
-                '(("PDF Viewer"
-                   "okular --page %(outpage) %o")))))
-      
-      ;; ##### Enable synctex correlation. From Okular just press
-      ;; ##### Shift + Left click to go to the good line.
-      (setq TeX-source-correlate-mode t
-            TeX-source-correlate-start-server t)
-      
-      (setcar (cdr (assoc 'output-pdf TeX-view-program-selection)) "Okular")
-      
-      (add-hook 'LaTeX-mode-hook
-                (lambda ()
-                  (company-auctex-init))))
-
-  (use-package font-latex)
-
-  ;; Command for generating pngs of latex equations
-  (defun latex-eq-to-png (equation output-file)
-    (interactive "MEquation: \nFOuput File: ")
-    (let ((file (make-temp-file "latext-to-png" nil ".tex")))
-      (with-temp-file file
-        (insert (format "\\documentclass[convert={outfile=%s,density=1000},border={0cm 0.2cm}]{standalone}\\usepackage{mymacros} \\begin{document}"
-                        output-file))
-        (insert (format "$%s$" equation))
-        (insert "\\end{document}"))
-      (start-process-shell-command
-       "latex-to-png"
-       (get-buffer-create "*latex-to-png compilation*")
-       (concat
-        "cd "
-        temporary-file-directory
-        " && "
-        "pdflatex "
-        "-shell-escape " 
-        file))))
-
-  (defun latex-to-png (equation output-file)
-    (interactive "MEquation: \nFOuput File: ")
-    (let ((file (make-temp-file "latext-to-png" nil ".tex")))
-      (with-temp-file file
-        (insert (format "\\documentclass[convert={outfile=%s,density=1000}]{standalone}\\usepackage{mymacros} \\begin{document}"
-                        output-file))
-        (insert (format "%s" equation))
-        (insert "\\end{document}"))
-      (start-process-shell-command
-       "latex-to-png"
-       (get-buffer-create "*latex-to-png compilation*")
-       (concat
-        "cd "
-        temporary-file-directory
-        " && "
-        "pdflatex "
-        "-shell-escape " 
-        file))))
-#+END_SRC
-** ORG
-#+BEGIN_SRC emacs-lisp
-  (use-package org
-    :bind (("C-c r" . org-capture)
-	   ("C-c l" . org-store-link)
-	   ("C-c a" . org-agenda)
-	   ("C-c b" . org-iswitchb)
-	   :map org-mode-map
-	   ("C-M-<left>" . org-promote-subtree)
-	   ("C-M-<right>" . org-demote-subtree)
-	   ("C-M-u" . org-up-element)
-	   ("C-M-f" . org-forward-element)
-	   ("C-M-b" . org-backward-element)
-	   ("C-M-d" . org-down-element))
-    :config
-    (setq org-directory "~/Documents/org")
-    (setq org-default-notes-file "~/Documents/org/agenda/notes.org")
-    (setq org-log-done 'time)
-    (setq org-capture-templates
-	  '(("W" "Work todo" entry (file+headline "~/Dropbox/org/agenda/work.org" "Tasks")
-	     "* TODO %?\t:WORK:\nDEADLINE: %^{Deadline}t\n  %i\n")
-	    ("H" "Home todo" entry (file+headline "~/Dropbox/org/agenda/tasks.org" "Tasks")
-	     "* TODO %?\t:HOME:\nDEADLINE: %^{Deadline}t\n  %i\n")
-	    ("S" "School todo" entry (file "~/Dropbox/org/agenda/school-work.org")
-	     "* TODO %?\t:SCHOOL:%^g\nDEADLINE: %^{Deadline}t\n  %i\n")
-	    ("P" "PClassic TODO" entry (file+headline "~/Dropbox/org/agenda/pclassic.org" "Tasks")
-	     "* TODO %?\t:PCLASSIC:\nDEADLINE: %^{Deadline}t\n  %i\n")
-	    ("w" "Work entry" entry (file+headline "~/Dropbox/org/agenda/work.org" "Events")
-	     "* %?\n\t:WORK:\nSCHEDULED: %^{Schedule}t\n %i\n")
-	    ("h" "Home entry" entry (file+headline "~/Dropbox/org/agenda/work.org" "Events")
-	     "* %?\n\t:HOME:\nSCHEDULED: %^{Schedule}t\n %i\n")
-	    ("n" "Note" entry (file+datetree "~/Dropbox/org/agenda/notes.org")
-	     "* %?\nEntered on %U\n  %i\n")
-	    ("l" "Lab notebook" entry (file+datetree "~/Dropbox/org/agenda/lab-notebook.org")
-	     "* %^{prompt|No Title}\nEntered on %U\n%? %i\n")))
-    (setq org-agenda-files
-	  (quote
-	   ("~/Documents/org/agenda/notes.org" "~/Documents/org/agenda/tasks.org"
-	    "~/Documents/org/agenda/work.org" "~/Documents/org/agenda/school-work.org"
-	    "~/Documents/org/agenda/pclassic.org")))
-    (setq org-mobile-inbox-for-pull "~/Documents/org/from-mobile.org")
-    (setq org-mobile-directory "~/Documents/MobileOrg")
-    (setq org-mobile-files '("~/Documents/org/agenda/notes.org" "~/Documents/org/agenda/tasks.org"
-			     "~/Documents/org/agenda/work.org"))
-    (setq org-modules
-	  (quote
-	   (org-bbdb org-bibtex org-gnus org-info org-irc org-mhe org-rmail org-w3m)))
-    (setq org-src-tab-acts-natively t)
-    (setq org-src-window-setup (quote current-window))
-    (org-babel-do-load-languages
-     'org-babel-load-languages
-     '((emacs-lisp . t)
-       (python . t)))
-    (setq org-latex-pdf-process '("latexmk -pdflatex='lualatex -shell-escape -interaction nonstopmode' -pdf -f  %f"))
-    ;; (setq org-structure-template-alist
-  ;;         (quote
-  ;;          (("S" "#+BEGIN_SRC emacs-lisp
-
-  ;; #+END_SRC" "")
-  ;;           ("s" "#+BEGIN_SRC ?
-
-  ;; #+END_SRC" "<src lang=\"?\">
-
-  ;; </src>")
-  ;;           ("e" "#+BEGIN_EXAMPLE
-  ;; ?
-  ;; #+END_EXAMPLE" "<example>
-  ;; ?
-  ;; </example>")
-  ;;           ("q" "#+BEGIN_QUOTE
-  ;; ?
-  ;; #+END_QUOTE" "<quote>
-  ;; ?
-  ;; </quote>")
-  ;;           ("v" "#+BEGIN_VERSE
-  ;; ?
-  ;; #+END_VERSE" "<verse>
-  ;; ?
-  ;; </verse>")
-  ;;           ("V" "#+BEGIN_VERBATIM
-  ;; ?
-  ;; #+END_VERBATIM" "<verbatim>
-  ;; ?
-  ;; </verbatim>")
-  ;;           ("c" "#+BEGIN_CENTER
-  ;; ?
-  ;; #+END_CENTER" "<center>
-  ;; ?
-  ;; </center>")
-  ;;           ("l" "#+BEGIN_LaTeX
-  ;; ?
-  ;; #+END_LaTeX" "<literal style=\"latex\">
-  ;; ?
-  ;; </literal>")
-  ;;           ("L" "#+LaTeX: " "<literal style=\"latex\">?</literal>")
-  ;;           ("h" "#+BEGIN_HTML
-  ;; ?
-  ;; #+END_HTML" "<literal style=\"html\">
-  ;; ?
-  ;; </literal>")
-  ;;           ("H" "#+HTML: " "<literal style=\"html\">?</literal>")
-  ;;           ("a" "#+BEGIN_ASCII
-  ;; ?
-  ;; #+END_ASCII" "")
-  ;;           ("A" "#+ASCII: " "")
-  ;;           ("i" "#+INDEX: ?" "#+INDEX: ?")
-  ;;           ("I" "#+INCLUDE: %file ?" "<include file=%file markup=\"?\">"))))
-
-
-    (defun nates-org-mode-hook ()
-      (visual-line-mode t)))
-    (add-hook 'org-mode-hook 'nates-org-mode-hook)
-    (setq org-todo-keywords '((sequence "TODO(t)" "IN-PROGRESS(i!)" "|" "DONE(d!)")))
-
-  (use-package eval-in-repl
-    :ensure t)
-
-  (use-package eval-in-repl-python
-    :config
-    (add-hook 'org-mode-hook
-	      '(lambda ()
-		 (local-set-key (kbd "C-c p") 'eir-eval-in-python))))
-
-  (use-package pdf-tools
-    :ensure t
-    :config
-    (pdf-tools-install))
-
-  (use-package interleave
-    :ensure t)
-
-  (use-package biblio
-    :load-path "~/.emacs.d/lisp/biblio.el")
-
-
-  (use-package org-ref
-    :ensure t
-    :init
-    (setf org-ref-bibliography-notes "~/Documents/LuceyResearch/articles.org"
-	  org-ref-notes-directory "~/Documents/LuceyResearch/notes/"
-	  org-ref-default-bibliography `("~/Documents/LuceyResearch/articles.bib")
-	  org-ref-pdf-directory "~/Documents/LuceyResearch/pdfs/")
-    :config)
-
-
-
-
-#+END_SRC
-** MAGIT
-#+BEGIN_SRC emacs-lisp
-  (use-package magit
-    :ensure t
-    :config
-    (setq magit-push-arguments nil)
-    (setq magit-diff-use-overlays nil))
-#+END_SRC
-* Completion
-** Company mode
-#+BEGIN_SRC emacs-lisp
-  (use-package company
-      :demand
-      :config
-      (setq company-dabbrev-downcase nil)
-      (setq company-idle-delay 0.1)
-      (setq company-backends
-            '(company-files
-              (company-keywords 
-               company-dabbrev-code)))
-      (setq company-dabbrev-code-modes
-            '(prog-mode batch-file-mode csharp-mode css-mode 
-                        erlang-mode haskell-mode jde-mode lua-mode
-                        python-mode matlab-mode matlab-shell-mode))    
-      (add-hook 'after-init-hook 'global-company-mode)
-      :bind (("C-M-s-<tab>" . company-other-backend)))
-
-#+END_SRC
-* Source Control
-*** GIT
-#+BEGIN_SRC emacs-lisp
-(defun nates-git-ignore-mode ()
-  (add-to-list (make-local-variable 'company-backends) 'company-files))
-(add-to-list 'auto-mode-alist '("\\.gitignore\\'" . nates-git-ignore-mode))
 #+END_SRC
