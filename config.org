@@ -401,21 +401,31 @@
   (use-package lsp-mode
     :ensure t
     :config
+    ;(setq lsp-enable-completion-at-point nil)
     (use-package lsp-ui
       :ensure t
       :hook ((lsp-mode . lsp-ui-mode)))
-    (use-package company-lsp
-      :ensure t
-      :config (push 'company-lsp company-backends))
-
     (lsp-register-client
       (make-lsp-client :new-connection (lsp-tramp-connection "pyls")
 		       :major-modes '(python-mode)
 		       :remote? t
 		       :server-id 'pyls-remote))
-    :hook ((python-mode . lsp-mode)))
-#+end_src
+    :hook
+    ((python-mode . lsp-mode)
+     (lsp-after-initialize . (lambda () (setq company-backends
+					      (delete 'company-capf company-backends))))))
 
+#+end_src
+*** Python
+#+begin_src emacs-lisp :tangle yes
+  (use-package python
+    :init
+    (add-hook 'python-mode-hook (lambda()
+				  (make-local-variable 'company-backends)
+				  (setq company-backends '((company-files 
+							    company-capf
+							    company-dabbrev-code))))))
+#+end_src
 *** CMAKE
 #+BEGIN_SRC emacs-lisp
   (use-package cmake-mode :ensure t)
