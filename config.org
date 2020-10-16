@@ -56,21 +56,21 @@
 	mac-option-modifier 'super)
   (setq-default indent-tabes-mode nil)
 
-    (defun push-mark-no-activate ()
-      "Pushes `point' to `mark-ring' and does not activate the region
+  (defun push-mark-no-activate ()
+    "Pushes `point' to `mark-ring' and does not activate the region
 	   Equivalent to \\[set-mark-command] when \\[transient-mark-mode] is disabled"
-      (interactive)
-      (push-mark (point) t nil)
-      (message "Pushed mark to ring"))
+    (interactive)
+    (push-mark (point) t nil)
+    (message "Pushed mark to ring"))
 
-    (global-set-key (kbd "C-`") 'push-mark-no-activate)
+  (global-set-key (kbd "C-`") 'push-mark-no-activate)
 
-    (defun jump-to-mark ()
-      "Jumps to the local mark, respecting the `mark-ring' order.
+  (defun jump-to-mark ()
+    "Jumps to the local mark, respecting the `mark-ring' order.
 	  This is the same as using \\[set-mark-command] with the prefix argument."
-      (interactive)
-      (set-mark-command 1))
-    (global-set-key (kbd "M-SPC") 'jump-to-mark)
+    (interactive)
+    (set-mark-command 1))
+  (global-set-key (kbd "M-SPC") 'jump-to-mark)
 
   (use-package imenu-anywhere
        :ensure t
@@ -109,7 +109,7 @@
       ("b" ido-switch-buffer) 
       ("f" ido-find-file)
       ("F" projectile-find-file)
-    
+
       ("h" split-window-right)
       ("v" split-window-below)
 
@@ -117,7 +117,7 @@
       ("o" delete-other-windows)
 
       ("q" nil))
-    :bind ("s-l" . hydra-window-stuff/body))
+    :bind ("s-W" . hydra-window-stuff/body))
 
 
   (use-package avy
@@ -138,7 +138,7 @@
       ("c" avy-goto-char-2)
       ("C" avy-goto-char)
       ("L" avy-goto-char-in-line)
-      ("w" avy-goto-word-1)
+       ("w" avy-goto-word-1)
       ;; jump to beginning of some word
       ("W" avy-goto-word-0)
       ;; jump to subword starting with a char
@@ -148,7 +148,7 @@
 
       ("l" avy-goto-line)  )
 
-    (global-set-key (kbd "s-g") 'goto/body))
+    (global-set-key (kbd "C-c SPC") 'goto/body))
 
 #+end_src
 
@@ -220,7 +220,7 @@
 #+begin_src emacs-lisp :tangle yes
 (use-package dired-subtree
   :ensure t)
-
+(setq dired-dwim-target t)
 (setq dired-listing-switches "-alh")
 #+end_src
 ** Tramp
@@ -347,6 +347,10 @@
 (add-to-list 'auto-mode-alist '("\\.gitignore\\'" . nates-git-ignore-mode))
 #+END_SRC
 ** Programming
+#+begin_src emacs-lisp :tangle yes
+  (use-package flycheck
+    :custom (flycheck-checker-error-threshold 4000 "Errors!"))
+#+end_src
 *** Emacs Lisp
     #+begin_src emacs-lisp :tangle yes
       (use-package paredit
@@ -365,36 +369,41 @@
    #+end_src
 *** Org
     #+begin_src emacs-lisp :tangle yes
-      (use-package org
-	  :bind (("C-c r" . org-capture)
-		 ("C-c l" . org-store-link)
-		 ("C-c a" . org-agenda)
-		 ("C-c b" . org-iswitchb)
-		 :map org-mode-map
-		 ("C-M-<left>" . org-promote-subtree)
-		 ("C-M-<right>" . org-demote-subtree)
-		 ("C-M-u" . org-up-element)
-		 ("C-M-f" . org-forward-element)
-		 ("C-M-b" . org-backward-element)
-		 ("C-M-d" . org-down-element))
-	  :config
-	  (setq org-directory "~/Documents/org")
-	  (setq org-default-notes-file "~/Documents/org/agenda/notes.org")
-	  (setq org-log-done 'time)
-
-	  (setq org-agenda-files
-		(quote
-		 ("~/Documents/org/agenda/notes.org" "~/Documents/org/agenda/tasks.org"
-		  "~/Documents/org/agenda/work.org" "~/Documents/org/agenda/school-work.org"
-		  "~/Documents/org/agenda/pclassic.org")))
-	  (setq org-modules
-		(quote
-		 (org-bbdb org-bibtex org-gnus org-info org-irc org-mhe org-rmail org-w3m org-tempo)))
-	  (org-babel-do-load-languages
-	   'org-babel-load-languages
-	   '((emacs-lisp . t)
-	     (python . t)))
-	  (setq org-latex-pdf-process '("latexmk -pdflatex='lualatex -shell-escape -interaction nonstopmode' -pdf -f  %f")))
+	    (use-package org
+		:bind (("C-c r" . org-capture)
+		       ("C-c l" . org-store-link)
+		       ("C-c a" . org-agenda)
+		       ("C-c b" . org-iswitchb)
+		       :map org-mode-map
+		       ("C-M-<left>" . org-promote-subtree)
+		       ("C-M-<right>" . org-demote-subtree)
+		       ("C-M-u" . org-up-element)
+		       ("C-M-f" . org-forward-element)
+		       ("C-M-b" . org-backward-element)
+		       ("C-M-d" . org-down-element))
+		:config
+		(setq org-directory "~/Documents/org")
+		(setq org-default-notes-file "~/Documents/org/agenda/notes.org")
+		(setq org-log-done 'time)
+		(setq org-capture-templates
+		      `(("t" "TODO Nate" entry (file+datetree "~/Documents/org/tasks.org"  "Tasks")
+			 "* TODO [#C] %?\n   SCHEDULED: <%<%Y-%m-%d %a>>\n  [%<%Y-%m-%d %a>]\n  %a")
+			("n" "Note Here" entry (file+datetree buffer-file-name "Journal")
+			 "* %^{Description}
+      %?")))
+		(setq org-agenda-files
+		      (quote
+		       ("~/Documents/org/agenda/notes.org" "~/Documents/org/agenda/tasks.org"
+			"~/Documents/org/agenda/work.org" "~/Documents/org/agenda/school-work.org"
+			"~/Documents/org/agenda/pclassic.org")))
+		(setq org-modules
+		      (quote
+		       (org-bbdb org-bibtex org-gnus org-info org-irc org-mhe org-rmail org-w3m org-tempo)))
+		(org-babel-do-load-languages
+		 'org-babel-load-languages
+		 '((emacs-lisp . t)
+		   (python . t)))
+		(setq org-latex-pdf-process '("latexmk -pdflatex='lualatex -shell-escape -interaction nonstopmode' -pdf -f  %f")))
     #+end_src
 *** LSP
 #+begin_src emacs-lisp :tangle yes
@@ -409,7 +418,11 @@
       (make-lsp-client :new-connection (lsp-tramp-connection "pyls")
 		       :major-modes '(python-mode)
 		       :remote? t
-		       :server-id 'pyls-remote))
+		       :server-id 'pyls-remote
+		       :initialized-fn (lambda (workspace)
+					 (with-lsp-workspace workspace
+					   (lsp--set-configuration
+					    (lsp-configuration-section "pyls"))))))
     :hook
     ((python-mode . lsp-mode)
      (lsp-after-initialize . (lambda () (setq company-backends
