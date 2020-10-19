@@ -123,7 +123,7 @@
   (use-package avy
     :ensure t
     :config
-    (defhydra goto (:color blue :hint nil)
+    (defhydra goto (:color blue :hint nil :idle 0.5)
       "
   Goto:
   ^Char^              ^Word^                
@@ -216,6 +216,20 @@
     :config (exec-path-from-shell-initialize))
 #+end_src
 * Major Modes
+** Text
+#+begin_src emacs-lisp :tangle yes
+  (add-hook 'text-mode-hook (lambda () (flyspell-mode 1)))
+
+  (use-package flyspell-correct
+    :ensure t
+    :after flyspell
+    :bind (:map flyspell-mode-map ("C-;" . flyspell-correct-wrapper)))
+
+
+  (use-package flyspell-correct-ivy
+    :ensure t
+    :after flyspell-correct)
+#+end_src
 ** Dired
 #+begin_src emacs-lisp :tangle yes
 (use-package dired-subtree
@@ -296,9 +310,17 @@
     :ensure t)
 
   (use-package tex
-    :ensure auctex)
+    :ensure auctex
+    :mode ("\\.tex\\'". LaTeX-mode)
+    :init (add-hook 'LaTeX-mode-hook #'lsp-mode)
+     (add-hook 'LaTeX-mode-hook #'lsp))
 
   (use-package font-latex)
+
+  ;; (use-package auctex
+  ;;   :requires tex
+  ;;   :mode "\\.tex\\'"
+  ;;   :init (add-hook 'LaTeX-mode-hook #'lsp-mode))
 
   ;; Command for generating pngs of latex equations
   (defun latex-eq-to-png (equation output-file)
