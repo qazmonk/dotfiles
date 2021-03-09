@@ -215,7 +215,25 @@
     :demand t
     :config (exec-path-from-shell-initialize))
 #+end_src
+** Scratch
+#+begin_src emacs-lisp :tangle yes
+  (setq initial-major-mode 'org-mode)
+  (setq initial-scratch-message nil)
+#+end_src
 * Major Modes
+** Calculator
+#+begin_src emacs-lisp :tangle yes
+  (setq
+   math-additional-units '((GiB "1024 * MiB" "Giga Byte")
+			   (MiB "1024 * KiB" "Mega Byte")
+			   (KiB "1024 * B" "Kilo Byte")
+			   (B nil "Byte")
+			   (Gib "1024 * Mib" "Giga Bit")
+			   (Mib "1024 * Kib" "Mega Bit")
+			   (Kib "1024 * bit" "Kilo Bit")
+			   (bit "B / 8" "Bit"))
+   math-units-table nil)
+#+end_src
 ** Text
 #+begin_src emacs-lisp :tangle yes
   (add-hook 'text-mode-hook (lambda () (flyspell-mode 1)))
@@ -346,7 +364,7 @@
     (interactive "MEquation: \nFOuput File: ")
     (let ((file (make-temp-file "latext-to-png" nil ".tex")))
       (with-temp-file file
-	(insert (format "\\documentclass[convert={outfile=%s,density=1000}]{standalone}\\usepackage{mymacros} \\begin{document}"
+	(insert (format "\\documentclass[preview,convert={outfile=%s,density=1000}]{standalone}\\usepackage{mymacros} \\begin{document}"
 			output-file))
 	(insert (format "%s" equation))
 	(insert "\\end{document}"))
@@ -412,7 +430,11 @@
 			 "* TODO [#C] %?\n   SCHEDULED: <%<%Y-%m-%d %a>>\n  [%<%Y-%m-%d %a>]\n  %a")
 			("n" "Note Here" entry (file+datetree buffer-file-name "Journal")
 			 "* %^{Description}
-      %?")))
+      %?")
+			("j" "Journal Entry"
+			 entry (file+datetree "~/journal.org")
+			 "* %?"
+			 :empty-lines 1)))
 		(setq org-agenda-files
 		      (quote
 		       ("~/Documents/org/agenda/notes.org" "~/Documents/org/agenda/tasks.org"
@@ -432,19 +454,20 @@
   (use-package lsp-mode
     :ensure t
     :config
-    ;(setq lsp-enable-completion-at-point nil)
+    (setq gc-cons-threshold 100000000)
+    (setq read-process-output-max (* 1024 1024))
     (use-package lsp-ui
       :ensure t
       :hook ((lsp-mode . lsp-ui-mode)))
     (lsp-register-client
-      (make-lsp-client :new-connection (lsp-tramp-connection "pyls")
-		       :major-modes '(python-mode)
-		       :remote? t
-		       :server-id 'pyls-remote
-		       :initialized-fn (lambda (workspace)
-					 (with-lsp-workspace workspace
-					   (lsp--set-configuration
-					    (lsp-configuration-section "pyls"))))))
+     (make-lsp-client :new-connection (lsp-tramp-connection "pyls")
+		      :major-modes '(python-mode)
+		      :remote? t
+		      :server-id 'pyls-remote
+		      :initialized-fn (lambda (workspace)
+					(with-lsp-workspace workspace
+					  (lsp--set-configuration
+					   (lsp-configuration-section "pyls"))))))
     :hook
     ((python-mode . lsp-mode)
      (lsp-after-initialize . (lambda () (setq company-backends
@@ -520,3 +543,12 @@
     (add-to-list 'auto-mode-alist 
                  '("\\.bashrc.*" . shell-script-mode)))
 #+END_SRC
+
+*** LISP
+#+begin_src emacs-lisp :tangle yes
+  (use-package slime
+    :ensure t
+    :config
+    (setq inferior-lisp-program "sbcl")
+    (setq slime-contribs '(slime-fancy)))
+#+end_src

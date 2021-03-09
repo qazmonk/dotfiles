@@ -7,7 +7,7 @@ alias open='xdg-open'
 alias play='vlc --full-screen'
 
 
-. /home/nate/torch/install/bin/torch-activate
+
 
 # added by Anaconda3 installer
 export PATH="/home/nate/anaconda3/bin:$PATH"
@@ -29,3 +29,22 @@ unset __conda_setup
 # <<< conda initialize <<<
 
 
+vterm_printf(){
+    if [ -n "$TMUX" ]; then
+        # Tell tmux to pass the escape sequences through
+        # (Source: http://permalink.gmane.org/gmane.comp.terminal-emulators.tmux.user/1324)
+        printf "\ePtmux;\e\e]%s\007\e\\" "$1"
+    elif [ "${TERM%%-*}" = "screen" ]; then
+        # GNU screen (screen, screen-256color, screen-256color-bce)
+        printf "\eP\e]%s\007\e\\" "$1"
+    else
+        printf "\e]%s\e\\" "$1"
+    fi
+}
+
+vterm_prompt_end(){
+    vterm_printf "51;A$(whoami)@$(hostname):$(pwd)"
+}
+if [[ "$INSIDE_EMACS" = 'vterm' ]]; then
+    PS1=$PS1'\[$(vterm_prompt_end)\]'
+fi
