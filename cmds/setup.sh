@@ -1,9 +1,9 @@
 #!/bin/bash
 
-sudo apt install git
-mkdir ~/packages/
+# sudo apt install git
+# mkdir ~/packages/
 
-curl https://pyenv.run | bash
+# curl https://pyenv.run | bash
 
 cd ~/dotfiles/cmds/
 chmod a+x *.sh

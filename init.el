@@ -3,7 +3,8 @@
 ;; installed packages.  Don't delete this line.  If you don't want it,
 ;; just comment it out by adding a semicolon to the start of the line.
 ;; You may delete these explanatory comments.
-;(package-initialize)
+(if (version< emacs-version "27.0")
+    (package-initialize))
 (setq custom-file "~/dotfiles/custom.el") ; move all customization to this file
 
 (defun my-tangle-config-org ()
