@@ -7,12 +7,15 @@
     (let ((default-directory  "~/dotfiles/elisp"))
       (normal-top-level-add-subdirs-to-load-path))
 
-    (let* ((no-ssl (and (memq system-type '(windows-nt ms-dos))
-			(not (gnutls-available-p))))
-	   (url (concat (if no-ssl "http" "http") "://melpa.org/packages/")))
-      (add-to-list 'package-archives (cons "melpa" url) t))
-    (add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
-    (add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/"))
+    (setq package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
+			 ;("marmalade" . "http://marmalade-repo.org/packages/")
+			 ("melpa" . "https://melpa.org/packages/")))
+    ;; (let* ((no-ssl (and (memq system-type '(windows-nt ms-dos))
+    ;; 		    (not (gnutls-available-p))))
+    ;;        (url (concat (if no-ssl "http" "https") "://melpa.org/packages/")))
+    ;;   (add-to-list 'package-archives (cons "melpa" url) t))
+    ;; (add-to-list 'package-archives '("marmalade" . "https://marmalade-repo.org/packages/"))
+    ;(add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/"))
   #+end_src
 ** Backups
 #+begin_src emacs-lisp :tangle yes
@@ -220,6 +223,62 @@
   (setq initial-major-mode 'org-mode)
   (setq initial-scratch-message nil)
 #+end_src
+** Server Sync
+#+begin_src emacs-lisp :tangle yes
+  (use-package f
+    :ensure t)
+  '
+  (use-package s
+    :ensure t)
+
+  (defcustom remote-sync-root "/home/nate/sync/"
+    "Path to the directory for storing synced remote directories")
+
+  (defcustom remote-sync-servercmd-alist '(("autobot" . "/home/nchodosh/.local/bin/unison"))
+    "Alist for associating remote hosts with servercmds")
+
+  (defun sync-to-local (remote-directory)
+    (interactive "DRoot directory to sync: ")
+    (cl-assert (file-remote-p remote-directory) t "Non-remote directory selected for local sync")
+    (let ((host-name (file-remote-p remote-directory 'host))
+	  (dirname (f-base (file-remote-p remote-directory 'localname)))
+	  (remote-path (f-dirname (file-remote-p remote-directory 'localname))))
+      (cl-assert (assoc host-name remote-sync-servercmd-alist)
+		 "Host not found in remote-sync-servercmd-alist")
+      (let (;(output-buffer (generate-new-buffer (format "unison [%s]" dirname)))
+	    (local-directory (f-join remote-sync-root dirname))
+	    (remote-unison-target (format "ssh://%s/" host-name))
+	    (remote-servercmd (cdr (assoc host-name remote-sync-servercmd-alist))))
+	(let ((default-directory local-directory))
+	  (add-dir-local-variable nil 'server-sync-remote-host host-name)
+	  (add-dir-local-variable nil 'server-sync-remote-path remote-path)
+	  (add-dir-local-variable nil 'server-sync-local-directory local-directory)
+	  (make-comint "server-sync" "unison" nil
+		       remote-sync-root remote-unison-target
+		       "-path" dirname
+		       "-servercmd" remote-servercmd)))))
+
+  (defun sync-to-remote ()
+    (interactive)
+    (message (buffer-local-value 'server-sync-local-directory (current-buffer)))
+    (let ((host-name (buffer-local-value 'server-sync-remote-host (current-buffer)))
+	  (remote-path (buffer-local-value 'server-sync-remote-path (current-buffer)))
+	  (local-directory (buffer-local-value 'server-sync-local-directory (current-buffer))))
+      (cl-assert (assoc host-name remote-sync-servercmd-alist)
+		 "Host not found in remote-sync-servercmd-alist")
+      (let ((dirname (f-base local-directory))
+	    (remote-unison-target (format "ssh://%s/" host-name))
+	    (remote-servercmd (cdr (assoc host-name remote-sync-servercmd-alist))))
+	(let ((default-directory local-directory)
+	      (comint-buffer))
+	  (setq comint-buffer (make-comint "server-sync" "unison" nil
+					   remote-sync-root remote-unison-target
+					   "-auto"
+					   "-path" dirname
+					   "-servercmd" remote-servercmd))
+	  (pop-to-buffer-same-window comint-buffer)))))
+
+#+end_src
 * Major Modes
 ** Calculator
 #+begin_src emacs-lisp :tangle yes
@@ -264,7 +323,8 @@
 ** Shell
 #+begin_src emacs-lisp :tangle yes
   (use-package vterm
-    :ensure t)
+    :ensure t
+    :bind (:map vterm-mode-map ("C-l" . vterm-send-C-l)))
 #+end_src
 *** eshell
 #+BEGIN_SRC emacs-lisp
@@ -330,8 +390,10 @@
   (use-package tex
     :ensure auctex
     :mode ("\\.tex\\'". LaTeX-mode)
+    :after (lsp-mode)
     :init (add-hook 'LaTeX-mode-hook #'lsp-mode)
-     (add-hook 'LaTeX-mode-hook #'lsp))
+    (add-hook 'LaTeX-mode-hook #'lsp)
+    (add-to-list 'lsp-enabled-clients 'digestif))
 
   (use-package font-latex)
 
@@ -341,6 +403,10 @@
   ;;   :init (add-hook 'LaTeX-mode-hook #'lsp-mode))
 
   ;; Command for generating pngs of latex equations
+
+
+
+
   (defun latex-eq-to-png (equation output-file)
     (interactive "MEquation: \nFOuput File: ")
     (let ((file (make-temp-file "latext-to-png" nil ".tex")))
@@ -386,6 +452,58 @@
   (add-to-list (make-local-variable 'company-backends) 'company-files))
 (add-to-list 'auto-mode-alist '("\\.gitignore\\'" . nates-git-ignore-mode))
 #+END_SRC
+** Org
+    #+begin_src emacs-lisp :tangle yes
+      (use-package org
+	:bind (("C-c r" . org-capture)
+	       ("C-c l" . org-store-link)
+	       ("C-c a" . org-agenda)
+	       ("C-c b" . org-iswitchb)
+	       :map org-mode-map
+	       ("C-M-<left>" . org-promote-subtree)
+	       ("C-M-<right>" . org-demote-subtree)
+	       ("C-M-u" . org-up-element)
+	       ("C-M-f" . org-forward-element)
+	       ("C-M-b" . org-backward-element)
+	       ("C-M-d" . org-down-element))
+	:config
+	(setq org-directory "~/Documents/org")
+	(setq org-default-notes-file "~/Documents/org/agenda/notes.org")
+	(setq org-log-done 'time)
+	(setq org-capture-templates
+	      `(("t" "TODO Nate" entry (file+datetree "~/Documents/org/tasks.org"  "Tasks")
+		 "* TODO [#C] %?\n   SCHEDULED: <%<%Y-%m-%d %a>>\n  [%<%Y-%m-%d %a>]\n  %a")
+		("n" "Note Here" entry (file+datetree buffer-file-name "Journal")
+		 "* %^{Description}
+      %?")
+		("j" "Journal Entry"
+		 entry (file+datetree "~/journal.org")
+		 "* %?"
+		 :empty-lines 1)
+		("N" "Notebook Entry"
+		 entry (file+datetree "~/Documents/org/notebook.org")
+		 "* %^{Description} %^g %?\nAdded: %U"
+		 :empty-lines 1)	  ))
+	(setq org-agenda-files
+	      (quote
+	       ("~/Documents/org/agenda/notes.org" "~/Documents/org/agenda/tasks.org"
+		"~/Documents/org/agenda/work.org" "~/Documents/org/agenda/school-work.org"
+		"~/Documents/org/agenda/pclassic.org")))
+	(setq org-modules
+	      (quote
+	       (org-bbdb org-bibtex org-gnus org-info org-irc org-mhe org-rmail org-w3m org-tempo)))
+	(org-babel-do-load-languages
+	 'org-babel-load-languages
+	 '((emacs-lisp . t)
+	   (python . t)))
+	(setq org-latex-pdf-process '("latexmk -pdflatex='lualatex -shell-escape -interaction nonstopmode' -pdf -f  %f")))
+
+      (use-package org-journal
+	:ensure t
+	:config
+	(setq org-journal-dir "~/Documents/org/journal/"
+	      org-journal-file-type 'monthly))
+    #+end_src
 ** Programming
 #+begin_src emacs-lisp :tangle yes
   (use-package flycheck
@@ -407,48 +525,6 @@
 	:ensure t
 	:hook (emacs-lisp-mode . eldoc-mode))
    #+end_src
-*** Org
-    #+begin_src emacs-lisp :tangle yes
-	    (use-package org
-		:bind (("C-c r" . org-capture)
-		       ("C-c l" . org-store-link)
-		       ("C-c a" . org-agenda)
-		       ("C-c b" . org-iswitchb)
-		       :map org-mode-map
-		       ("C-M-<left>" . org-promote-subtree)
-		       ("C-M-<right>" . org-demote-subtree)
-		       ("C-M-u" . org-up-element)
-		       ("C-M-f" . org-forward-element)
-		       ("C-M-b" . org-backward-element)
-		       ("C-M-d" . org-down-element))
-		:config
-		(setq org-directory "~/Documents/org")
-		(setq org-default-notes-file "~/Documents/org/agenda/notes.org")
-		(setq org-log-done 'time)
-		(setq org-capture-templates
-		      `(("t" "TODO Nate" entry (file+datetree "~/Documents/org/tasks.org"  "Tasks")
-			 "* TODO [#C] %?\n   SCHEDULED: <%<%Y-%m-%d %a>>\n  [%<%Y-%m-%d %a>]\n  %a")
-			("n" "Note Here" entry (file+datetree buffer-file-name "Journal")
-			 "* %^{Description}
-      %?")
-			("j" "Journal Entry"
-			 entry (file+datetree "~/journal.org")
-			 "* %?"
-			 :empty-lines 1)))
-		(setq org-agenda-files
-		      (quote
-		       ("~/Documents/org/agenda/notes.org" "~/Documents/org/agenda/tasks.org"
-			"~/Documents/org/agenda/work.org" "~/Documents/org/agenda/school-work.org"
-			"~/Documents/org/agenda/pclassic.org")))
-		(setq org-modules
-		      (quote
-		       (org-bbdb org-bibtex org-gnus org-info org-irc org-mhe org-rmail org-w3m org-tempo)))
-		(org-babel-do-load-languages
-		 'org-babel-load-languages
-		 '((emacs-lisp . t)
-		   (python . t)))
-		(setq org-latex-pdf-process '("latexmk -pdflatex='lualatex -shell-escape -interaction nonstopmode' -pdf -f  %f")))
-    #+end_src
 *** LSP
 #+begin_src emacs-lisp :tangle yes
   (use-package lsp-mode
@@ -456,18 +532,30 @@
     :config
     (setq gc-cons-threshold 100000000)
     (setq read-process-output-max (* 1024 1024))
+    ;; (lsp-register-client
+    ;;  (make-lsp-client :new-connection (lsp-tramp-connection "jedi-language-server")
+    ;; 		    :major-modes '(python-mode)
+    ;; 		    :remote? t
+    ;; 		    :server-id 'jedi-remote))
+
+    ;; (lsp-register-client
+    ;;  (make-lsp-client :new-connection (lsp-tramp-connection "pyls")
+    ;; 		    :major-modes '(python-mode)
+    ;; 		    :remote? t
+    ;; 		    :server-id 'pyls-remote))
+
+    ;; (add-to-list 'lsp-enabled-clients 'pyls)
+    ;; (add-to-list 'lsp-enabled-clients 'pyls-remote)
+
+    ;; (lsp-register-client
+    ;;  (make-lsp-client :new-connection (lsp-tramp-connection "pyright")
+    ;; 		    :major-modes '(python-mode)
+    ;; 		    :remote? t
+    ;; 		    :server-id 'pyright-remote))
     (use-package lsp-ui
       :ensure t
       :hook ((lsp-mode . lsp-ui-mode)))
-    (lsp-register-client
-     (make-lsp-client :new-connection (lsp-tramp-connection "pyls")
-		      :major-modes '(python-mode)
-		      :remote? t
-		      :server-id 'pyls-remote
-		      :initialized-fn (lambda (workspace)
-					(with-lsp-workspace workspace
-					  (lsp--set-configuration
-					   (lsp-configuration-section "pyls"))))))
+
     :hook
     ((python-mode . lsp-mode)
      (lsp-after-initialize . (lambda () (setq company-backends
@@ -483,6 +571,83 @@
 				  (setq company-backends '((company-files 
 							    company-capf
 							    company-dabbrev-code))))))
+
+  (use-package lsp-python-ms
+    :ensure t
+    :init (setq lsp-python-ms-auto-install-server t)
+    :hook (python-mode . (lambda ()
+			    (require 'lsp-python-ms)
+			    (lsp)))
+    :config
+    (lsp-register-client
+     (make-lsp-client
+      :new-connection (lsp-tramp-connection  "/home/nchodosh/.local/etc/mspyls/Microsoft.Python.LanguageServer")
+      :major-modes (append '(python-mode) lsp-python-ms-extra-major-modes)
+      :server-id 'mspyls-remote
+      :remote? t
+      :priority 1
+      ;; :initialization-options 'lsp-python-ms--extra-init-params
+      ;; :notification-handlers (lsp-ht ("python/languageServerStarted"
+      ;; 				    'lsp-python-ms--language-server-started-callback)
+      ;;                                ("telemetry/event" 'ignore)
+      ;;                                ("python/reportProgress"
+      ;; 				    'lsp-python-ms--report-progress-callback)
+      ;;                                ("python/beginProgress"
+      ;; 				    'lsp-python-ms--begin-progress-callback)
+      ;;                                ("python/endProgress"
+      ;; 				    'lsp-python-ms--end-progress-callback))
+      :initialized-fn (lambda (workspace)
+			(with-lsp-workspace workspace
+			  (lsp--set-configuration (lsp-configuration-section "python"))))))
+
+    (add-to-list 'lsp-enabled-clients 'mspyls)
+    (add-to-list 'lsp-enabled-clients 'mspyls-remote))  ; or lsp-deferred
+  ;; (use-package lsp-pyright
+  ;;   :ensure t
+  ;;   :after (lsp-mode)
+  ;;   :config
+  ;;   ;(add-to-list 'lsp-enabled-clients 'pyright)
+  ;;   ;(add-to-list 'lsp-enabled-clients 'pyright-remote)
+
+  ;;   (lsp-register-client
+  ;;    (make-lsp-client
+  ;;     :new-connection (lsp-tramp-connection (lambda ()
+  ;;                                             (cons (lsp-package-path 'pyright)
+  ;;                                                   lsp-pyright-langserver-command-args)))
+  ;;     :major-modes '(python-mode)
+  ;;     :server-id 'pyright-remote
+  ;;     :remote? t
+  ;;     :multi-root lsp-pyright-multi-root
+  ;;     :priority 3
+  ;;     :initialized-fn (lambda (workspace)
+  ;;                       (with-lsp-workspace workspace
+  ;; 			;; we send empty settings initially, LSP server will ask for the
+  ;; 			;; configuration of each workspace folder later separately
+  ;; 			(lsp--set-configuration
+  ;; 			 (make-hash-table :test 'equal))))
+  ;;     :download-server-fn (lambda (_client callback error-callback _update?)
+  ;;                           (lsp-package-ensure 'pyright callback error-callback))
+  ;;     :notification-handlers (lsp-ht ("pyright/beginProgress" 'lsp-pyright--begin-progress-callback)
+  ;;                                    ("pyright/reportProgress" 'lsp-pyright--report-progress-callback)
+  ;;                                    ("pyright/endProgress" 'lsp-pyright--end-progress-callback)))))
+
+
+  (define-derived-mode pickle-mode python-mode "pickle"
+    "Major mode for viewing pickle files."
+    (delete-region (point-min) (point-max))
+    (process-file "python" nil t t "-c" (format "import pickle\nprint(pickle.load(open('%s', 'rb')))"
+						(file-local-name (buffer-file-name))))
+    (set-buffer-modified-p nil)
+    (read-only-mode))
+
+  (add-to-list 'auto-mode-alist '("\\.pickle\\'" . pickle-mode))
+
+  ;; (use-package lsp-jedi
+  ;;   :ensure t
+  ;;   :after (lsp-mode)
+  ;;   :config
+  ;;     (add-to-list 'lsp-disabled-clients 'pyls)
+  ;;     (add-to-list 'lsp-enabled-clients 'jedi))
 #+end_src
 *** CMAKE
 #+BEGIN_SRC emacs-lisp
