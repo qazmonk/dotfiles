@@ -231,11 +231,47 @@
   (use-package s
     :ensure t)
 
-  (defcustom remote-sync-root "/home/nate/sync/"
+  (use-package comint
+    :demand t)
+
+  ;; Unison Mode
+  (defvar unison-local-cli-path "unison"
+    "Path to the program used by `run-cassandra'")
+
+  (defvar unison-local-sync-root "/home/nate/sync/"
     "Path to the directory for storing synced remote directories")
 
-  (defcustom remote-sync-servercmd-alist '(("autobot" . "/home/nchodosh/.local/bin/unison"))
+  (defvar unison-remote-cli-path-alist '(("autobot" . "/home/nchodosh/.local/bin/unison"))
     "Alist for associating remote hosts with servercmds")
+
+  (defvar unison-cli-arguments '()
+    "Commandline arguments to pass to `cassandra-cli'")
+
+  (defvar unison-sync-remote-host nil
+    "Directory local variable for holding the remote hostname")
+  (defvar unison-sync-remote-path nil
+    "Directory local variable for the path to the sync directory on the remote host")
+  (defvar unison-sync-local-directory nil
+    "Directory local vairable for the root directory associated with this file")
+  (defvar unison-sync-last-sync nil
+    "Directory local vairable for the last time this directory was synced")
+
+  (dolist (sym '(unison-sync-remote-host
+		 unison-sync-remote-path
+		 unison-sync-local-directory))
+    (put sym 'safe-local-variable 'stringp))
+  (put 'unison-sync-last-sync 'safe-local-variable 'listp)
+
+  (defvar unison-mode-map
+    (let ((map (nconc (make-sparse-keymap) comint-mode-map)))
+      ;; example definition
+      (define-key map "\t" 'completion-at-point)
+      map)
+    "Basic mode map for `run-cassandra'")
+
+  (defvar unison-prompt-regexp " \\[[a-zA-Z]*\\] "
+    "Prompt for `unison'.")
+
 
   (defun sync-to-local (remote-directory)
     (interactive "DRoot directory to sync: ")
@@ -243,40 +279,67 @@
     (let ((host-name (file-remote-p remote-directory 'host))
 	  (dirname (f-base (file-remote-p remote-directory 'localname)))
 	  (remote-path (f-dirname (file-remote-p remote-directory 'localname))))
-      (cl-assert (assoc host-name remote-sync-servercmd-alist)
+      (cl-assert (assoc host-name unison-remote-cli-path-alist)
 		 "Host not found in remote-sync-servercmd-alist")
       (let (;(output-buffer (generate-new-buffer (format "unison [%s]" dirname)))
-	    (local-directory (f-join remote-sync-root dirname))
+	    (local-directory (f-join unison-local-sync-root dirname))
 	    (remote-unison-target (format "ssh://%s/" host-name))
-	    (remote-servercmd (cdr (assoc host-name remote-sync-servercmd-alist))))
-	(let ((default-directory local-directory))
-	  (add-dir-local-variable nil 'server-sync-remote-host host-name)
-	  (add-dir-local-variable nil 'server-sync-remote-path remote-path)
-	  (add-dir-local-variable nil 'server-sync-local-directory local-directory)
-	  (make-comint "server-sync" "unison" nil
-		       remote-sync-root remote-unison-target
-		       "-path" dirname
-		       "-servercmd" remote-servercmd)))))
+	    (remote-servercmd (cdr (assoc host-name unison-remote-cli-path-alist))))
+	(let ((default-directory local-directory)
+	      (comint-buffer))
+	  (dir-locals-set-class-variables
+	   'unison-sync-directory
+	   `(("/home/nate/sync/nate-nerf" . ((unison-sync-remote-host . ,host-name)
+				  (unison-sync-remote-path . ,remote-path)
+				  (unison-sync-local-directory . "/home/nate/sync/nate-nerf")
+				  (unison-sync-last-sync . ,(current-time))))))
+	  (dir-locals-set-directory-class local-directory 'unison-sync-directory)
+
+	  (setq comint-buffer
+		(make-comint (format "server-sync [%s]" dirname)
+			     unison-local-cli-path nil
+			     unison-local-sync-root remote-unison-target
+			     "-path" dirname
+			     "-servercmd" remote-servercmd))
+	  (pop-to-buffer-same-window comint-buffer)
+	  ;; (add-hook 'after-save-hook `(lambda () (pop-to-buffer-same-window ,comint-buffer))
+	  ;; 	  nil t)
+	  ))))
+
 
   (defun sync-to-remote ()
     (interactive)
-    (message (buffer-local-value 'server-sync-local-directory (current-buffer)))
-    (let ((host-name (buffer-local-value 'server-sync-remote-host (current-buffer)))
-	  (remote-path (buffer-local-value 'server-sync-remote-path (current-buffer)))
-	  (local-directory (buffer-local-value 'server-sync-local-directory (current-buffer))))
-      (cl-assert (assoc host-name remote-sync-servercmd-alist)
+    (message (buffer-local-value 'unison-sync-local-directory (current-buffer)))
+    (let ((host-name (buffer-local-value 'unison-sync-remote-host (current-buffer)))
+	  (remote-path (buffer-local-value 'unison-sync-remote-path (current-buffer)))
+	  (local-directory (buffer-local-value 'unison-sync-local-directory (current-buffer))))
+      (cl-assert (assoc host-name unison-remote-cli-path-alist)
 		 "Host not found in remote-sync-servercmd-alist")
       (let ((dirname (f-base local-directory))
 	    (remote-unison-target (format "ssh://%s/" host-name))
-	    (remote-servercmd (cdr (assoc host-name remote-sync-servercmd-alist))))
+	    (remote-servercmd (cdr (assoc host-name unison-remote-cli-path-alist))))
 	(let ((default-directory local-directory)
+	      (proc-name (format "server-sync [%s]" dirname))
 	      (comint-buffer))
-	  (setq comint-buffer (make-comint "server-sync" "unison" nil
-					   remote-sync-root remote-unison-target
+	  (setq comint-buffer (make-comint proc-name
+					   unison-local-cli-path nil
+					   unison-local-sync-root remote-unison-target
 					   "-auto"
 					   "-path" dirname
 					   "-servercmd" remote-servercmd))
+	  (set-process-sentinel (get-process proc-name)
+				`(lambda (x y)
+				   (progn
+				     (message "proc: %s" y)
+				     (message "eq: %s" (string-match "finished" y))
+				     (if (string-match "finished" y)
+  )
+				     (pop-to-buffer-same-window ,(current-buffer)))))
 	  (pop-to-buffer-same-window comint-buffer)))))
+
+
+
+
 
 #+end_src
 * Major Modes
@@ -495,7 +558,8 @@
 	(org-babel-do-load-languages
 	 'org-babel-load-languages
 	 '((emacs-lisp . t)
-	   (python . t)))
+	   (python . t)
+	   (shell . t)))
 	(setq org-latex-pdf-process '("latexmk -pdflatex='lualatex -shell-escape -interaction nonstopmode' -pdf -f  %f")))
 
       (use-package org-journal
