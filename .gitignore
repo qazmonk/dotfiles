@@ -18,3 +18,5 @@
 !*.conf
 !Makefile
 /config.el
+/#.bashrc.global#
+/.#.bashrc.global
