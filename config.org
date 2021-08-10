@@ -34,6 +34,14 @@
 ** Appearance
    #+begin_src emacs-lisp :tangle yes
      (setq inhibit-startup-screen t)
+     (use-package dashboard
+       :ensure t
+       :config
+       (dashboard-setup-startup-hook)
+       (setq initial-buffer-choice (lambda () (get-buffer "*dashboard*")))
+       (setq dashboard-init-info "")
+       (setq dashboard-footer-messages '(""))
+       (setq dashboard-org-agenda-categories '("Tasks")))
      (tool-bar-mode -1)
      (scroll-bar-mode -1)
      (menu-bar-mode -1)
@@ -489,13 +497,11 @@
 		 "* %^{Description} %^g %?\nAdded: %U"
 		 :empty-lines 1)	  ))
 	(setq org-agenda-files
-	      (quote
-	       ("~/Documents/org/agenda/notes.org" "~/Documents/org/agenda/tasks.org"
-		"~/Documents/org/agenda/work.org" "~/Documents/org/agenda/school-work.org"
-		"~/Documents/org/agenda/pclassic.org")))
+	      '("~/org/"))
 	(setq org-modules
 	      (quote
-	       (org-bbdb org-bibtex org-gnus org-info org-irc org-mhe org-rmail org-w3m org-tempo)))
+	       (org-bbdb org-bibtex org-gnus org-info org-irc
+			 org-mhe org-rmail org-w3m org-tempo)))
 	(org-babel-do-load-languages
 	 'org-babel-load-languages
 	 '((emacs-lisp . t)
