@@ -1,0 +1,59 @@
+* Make bin directory for scripts
+  #+BEGIN_SRC shell
+    mkdir ~/dotfiles/bin
+    cd cmds
+    make all
+  #+END_SRC
+
+  #+RESULTS:
+  | ln    | -sf | ~/dotfiles/cmds/calc.sh                 | ~/dotfiles/bin/calc                 |
+  | chmod | a+x | ~/dotfiles/bin/calc                     |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/setup.sh                | ~/dotfiles/bin/setup                |
+  | chmod | a+x | ~/dotfiles/bin/setup                    |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/editor.sh               | ~/dotfiles/bin/editor               |
+  | chmod | a+x | ~/dotfiles/bin/editor                   |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/my-emacs.sh             | ~/dotfiles/bin/my-emacs             |
+  | chmod | a+x | ~/dotfiles/bin/my-emacs                 |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/fix-git-author.sh       | ~/dotfiles/bin/fix-git-author       |
+  | chmod | a+x | ~/dotfiles/bin/fix-git-author           |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/unison-sync-docs.sh     | ~/dotfiles/bin/unison-sync-docs     |
+  | chmod | a+x | ~/dotfiles/bin/unison-sync-docs         |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/unison-last-sync.sh     | ~/dotfiles/bin/unison-last-sync     |
+  | chmod | a+x | ~/dotfiles/bin/unison-last-sync         |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/connect-hdmi-display.sh | ~/dotfiles/bin/connect-hdmi-display |
+  | chmod | a+x | ~/dotfiles/bin/connect-hdmi-display     |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/screen_autostart.sh     | ~/dotfiles/bin/screen_autostart     |
+  | chmod | a+x | ~/dotfiles/bin/screen_autostart         |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/battery-notify.sh       | ~/dotfiles/bin/battery-notify       |
+  | chmod | a+x | ~/dotfiles/bin/battery-notify           |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/input-test.sh           | ~/dotfiles/bin/input-test           |
+  | chmod | a+x | ~/dotfiles/bin/input-test               |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/setup-bashrc.sh         | ~/dotfiles/bin/setup-bashrc         |
+  | chmod | a+x | ~/dotfiles/bin/setup-bashrc             |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/setup-emacs.sh          | ~/dotfiles/bin/setup-emacs          |
+  | chmod | a+x | ~/dotfiles/bin/setup-emacs              |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/unmntbox.sh             | ~/dotfiles/bin/unmntbox             |
+  | chmod | a+x | ~/dotfiles/bin/unmntbox                 |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/make-ccl-script.sh      | ~/dotfiles/bin/make-ccl-script      |
+  | chmod | a+x | ~/dotfiles/bin/make-ccl-script          |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/setup_dbus_address.sh   | ~/dotfiles/bin/setup_dbus_address   |
+  | chmod | a+x | ~/dotfiles/bin/setup_dbus_address       |                                     |
+  | ln    | -sf | ~/dotfiles/cmds/sbclcompile.sh          | ~/dotfiles/bin/sbclcompile          |
+  | chmod | a+x | ~/dotfiles/bin/sbclcompile              |                                     |
+* Link init.el to .emacs
+  #+BEGIN_SRC shell
+    make emacs-config
+  #+END_SRC
+
+  #+RESULTS:
+  : ln -s ~/dotfiles/init.el ~/.emacs
+* Set up bashrc
+  Two part bashrc: bashrc.global which has general shell helpers, and a .bashrc.local for anything you want specific to this machine. You should check .bashrc.lenovo for suggestions and whatever ends up in .bashrc.old which is the existing .bashrc
+#+BEGIN_SRC shell
+make bashrc
+#+END_SRC
+
+#+RESULTS:
+| chmod | a+x | ~/dotfiles/.bashrc.global |           |    |      |    |           |                |    |
+| if    | [   | -f                        | ~/.bashrc | ]; | then | mv | ~/.bashrc | ~/.bashrc.old; | fi |
+| ln    | -s  | ~/dotfiles/.bashrc.base   | ~/.bashrc |    |      |    |           |                |    |

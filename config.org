@@ -1,6 +1,6 @@
 * Global
   #+begin_src emacs-lisp :tangle yes
-    (require 'use-package)
+
     ;; add custom packages to load path
     (add-to-list 'load-path "~/.emacs.d/lisp")
     ;; more custom packages?
@@ -8,14 +8,18 @@
       (normal-top-level-add-subdirs-to-load-path))
 
     (setq package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
-			 ;("marmalade" . "http://marmalade-repo.org/packages/")
-			 ("melpa" . "https://melpa.org/packages/")))
+					    ;("marmalade" . "http://marmalade-repo.org/packages/")
+			     ("melpa" . "https://melpa.org/packages/")))
     ;; (let* ((no-ssl (and (memq system-type '(windows-nt ms-dos))
     ;; 		    (not (gnutls-available-p))))
     ;;        (url (concat (if no-ssl "http" "https") "://melpa.org/packages/")))
     ;;   (add-to-list 'package-archives (cons "melpa" url) t))
     ;; (add-to-list 'package-archives '("marmalade" . "https://marmalade-repo.org/packages/"))
-    ;(add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/"))
+					    ;(add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/"))
+    (require 'package)
+    (unless (package-installed-p 'use-package)
+      (package-install 'use-package))
+    (require 'use-package)
   #+end_src
 ** Backups
 #+begin_src emacs-lisp :tangle yes
@@ -571,6 +575,7 @@
 ** Programming
 #+begin_src emacs-lisp :tangle yes
   (use-package flycheck
+    :ensure t
     :custom (flycheck-checker-error-threshold 4000 "Errors!"))
 #+end_src
 *** Emacs Lisp
