@@ -41,7 +41,11 @@
        (setq initial-buffer-choice (lambda () (get-buffer "*dashboard*")))
        (setq dashboard-init-info "")
        (setq dashboard-footer-messages '(""))
-       (setq dashboard-org-agenda-categories '("Tasks")))
+       (setq dashboard-org-agenda-categories '("Tasks"))
+       (setq dashboard-items '((recents  . 5)
+			       (agenda . 5)))
+       (setq dashboard-match-agenda-entry
+	     "TODO=\"TODO\"-SCHEDULED={.+}|TODO=\"TODO\"+SCHEDULED<=\"<today>\""))
      (tool-bar-mode -1)
      (scroll-bar-mode -1)
      (menu-bar-mode -1)
@@ -169,25 +173,39 @@
 
 ** Command Completion
 #+begin_src emacs-lisp :tangle yes
-(use-package ivy
-  :ensure t
-  :diminish ivy-mode
-  :bind (("C-c C-r" . ivy-resume))
-  :config (ivy-mode t))
+  ;; (use-package ivy
+  ;;   :ensure t
+  ;;   :diminish ivy-mode
+  ;;   :bind (("C-c C-r" . ivy-resume))
+  ;;   :config (ivy-mode t))
 
-(use-package counsel
-  :ensure t
-  :bind (("M-x" . counsel-M-x)
-	 ("C-x C-f" . counsel-find-file)
-	 ("C-x b" . counsel-switch-buffer)))
+  ;; (use-package counsel
+  ;;   :ensure t
+  ;;   :bind (("M-x" . counsel-M-x)
+  ;; 	 ("C-x C-f" . counsel-find-file)
+  ;; 	 ("C-x b" . counsel-switch-buffer)))
 
-(use-package swiper
-  :ensure t
-  :bind (("C-s" . swiper)))
+  ;; (use-package swiper
+  ;;   :ensure t
+  ;;   :bind (("C-s" . swiper)))
 
-(use-package ivy-hydra
-  :ensure t)
+  ;; (use-package ivy-hydra
+  ;;   :ensure t)
 
+
+  (use-package selectrum
+    :ensure t
+    :config
+    (selectrum-mode +1))
+
+  (use-package selectrum-prescient
+    :ensure t
+    :config
+    ;; to make sorting and filtering more intelligent
+    (selectrum-prescient-mode +1)
+    ;; to save your command history on disk, so the sorting gets more
+    ;; intelligent over time
+    (prescient-persist-mode +1))
 #+end_src
 ** Text Completion and Expansion
    #+begin_src emacs-lisp :tangle yes
@@ -225,10 +243,12 @@
 #+end_src
 ** PATH
 #+begin_src emacs-lisp :tangle yes
-(use-package exec-path-from-shell
-    :ensure t
-    :demand t
-    :config (exec-path-from-shell-initialize))
+  (use-package exec-path-from-shell
+      :ensure t
+      :demand t
+      :config 
+      (setq exec-path-from-shell-arguments '())
+      (exec-path-from-shell-initialize))
 #+end_src
 ** Scratch
 #+begin_src emacs-lisp :tangle yes
@@ -268,6 +288,7 @@
   (defvar unison-sync-last-sync nil
     "Directory local vairable for the last time this directory was synced")
 
+
   (dolist (sym '(unison-sync-remote-host
 		 unison-sync-remote-path
 		 unison-sync-local-directory))
@@ -284,6 +305,20 @@
   (defvar unison-prompt-regexp " \\[[a-zA-Z]*\\] "
     "Prompt for `unison'.")
 
+  (defun update-project-variables (dirname host-name remote-path local-directory ctime)
+    (let ((local-directory (f-join unison-local-sync-root dirname))
+	  (vars
+	   `((nil . ((unison-sync-last-sync . ,ctime))))))
+      ;(dir-locals-set-class-variables 'unison-sync-directory (list (cons dirname vars)))
+      (add-dir-local-variable nil 'unison-sync-remote-host host-name)
+      (add-dir-local-variable nil 'unison-sync-remote-path remote-path)
+      (add-dir-local-variable nil 'unison-sync-local-directory  local-directory)
+      (add-dir-local-variable nil 'unison-sync-last-sync ctime)
+      (let ((buff (current-buffer)))
+	(find-file (f-join default-directory dir-locals-file))
+	(save-buffer)
+	(kill-buffer (current-buffer)))))
+
 
   (defun sync-to-local (remote-directory)
     (interactive "DRoot directory to sync: ")
@@ -299,24 +334,14 @@
 	    (remote-servercmd (cdr (assoc host-name unison-remote-cli-path-alist))))
 	(let ((default-directory local-directory)
 	      (comint-buffer))
-	  (dir-locals-set-class-variables
-	   'unison-sync-directory
-	   `(("/home/nate/sync/nate-nerf" . ((unison-sync-remote-host . ,host-name)
-				  (unison-sync-remote-path . ,remote-path)
-				  (unison-sync-local-directory . "/home/nate/sync/nate-nerf")
-				  (unison-sync-last-sync . ,(current-time))))))
-	  (dir-locals-set-directory-class local-directory 'unison-sync-directory)
-
+	  (update-project-variables dirname host-name remote-path local-directory (current-time))
 	  (setq comint-buffer
 		(make-comint (format "server-sync [%s]" dirname)
 			     unison-local-cli-path nil
 			     unison-local-sync-root remote-unison-target
 			     "-path" dirname
 			     "-servercmd" remote-servercmd))
-	  (pop-to-buffer-same-window comint-buffer)
-	  ;; (add-hook 'after-save-hook `(lambda () (pop-to-buffer-same-window ,comint-buffer))
-	  ;; 	  nil t)
-	  ))))
+	  (pop-to-buffer-same-window comint-buffer)))))
 
 
   (defun sync-to-remote ()
@@ -342,10 +367,7 @@
 	  (set-process-sentinel (get-process proc-name)
 				`(lambda (x y)
 				   (progn
-				     (message "proc: %s" y)
-				     (message "eq: %s" (string-match "finished" y))
-				     (if (string-match "finished" y)
-  )
+				     (update-project-variables ,dirname ,host-name ,remote-path ,local-directory (list ,@(current-time)))
 				     (pop-to-buffer-same-window ,(current-buffer)))))
 	  (pop-to-buffer-same-window comint-buffer)))))
 
@@ -530,6 +552,7 @@
 ** Org
     #+begin_src emacs-lisp :tangle yes
       (use-package org
+
 	:bind (("C-c r" . org-capture)
 	       ("C-c l" . org-store-link)
 	       ("C-c a" . org-agenda)
@@ -542,6 +565,13 @@
 	       ("C-M-b" . org-backward-element)
 	       ("C-M-d" . org-down-element))
 	:config
+	; add org-journal files to regex, might be slow
+	(setq org-agenda-file-regexp "\\`\\\([^.].*\\.org\\\|[0-9]\\\{8\\\}\\\(\\.gpg\\\)?\\\)\\'")
+	(dolist (root '("~/org/" "~/Documents/org/"))
+	  (dolist (file '("phone-journal.org" "journal/"))
+	    (let ((f (f-join root file)))
+	      (when (or (f-directory-p f) (f-file-p f))
+		(add-to-list 'org-agenda-files f)))))
 	(setq org-directory "~/Documents/org")
 	(setq org-default-notes-file "~/Documents/org/agenda/notes.org")
 	(setq org-log-done 'time)
@@ -559,8 +589,7 @@
 		 entry (file+datetree "~/Documents/org/notebook.org")
 		 "* %^{Description} %^g %?\nAdded: %U"
 		 :empty-lines 1)	  ))
-	(setq org-agenda-files
-	      '("~/org/"))
+
 	(setq org-modules
 	      (quote
 	       (org-bbdb org-bibtex org-gnus org-info org-irc
