@@ -32,6 +32,9 @@
     )
 #+end_src
 ** Appearance
+   :PROPERTIES:
+   :ORDERED:  t
+   :END:
    #+begin_src emacs-lisp :tangle yes
      (setq inhibit-startup-screen t)
      (use-package dashboard
@@ -53,8 +56,6 @@
 
      (defalias 'yes-or-no-p 'y-or-n-p)
 
-     (use-package diminish
-       :ensure t)
 
      (use-package zenburn-theme
        :ensure t
@@ -63,6 +64,13 @@
      (use-package highlight-parentheses
        :ensure t
        :hook ((emacs-lisp-mode lisp-mode) . highlight-parentheses-mode))
+
+     (use-package moody
+       :ensure t
+       :config
+       (setq x-underline-at-descent-line t)
+       (moody-replace-mode-line-buffer-identification)
+       (moody-replace-vc-mode))
 
 
    #+end_src
@@ -167,8 +175,14 @@
 
       ("l" avy-goto-line)  )
 
-    (global-set-key (kbd "C-c SPC") 'goto/body))
+    (global-set-key (kbd "C-M-SPC") 'goto/body))
 
+
+  (use-package ctrlf
+    :ensure t
+    :config
+    (ctrlf-mode +1)
+    (setq ctrlf-default-search-style 'fuzzy))
 #+end_src
 
 ** Command Completion
@@ -259,7 +273,7 @@
 #+begin_src emacs-lisp :tangle yes
   (use-package f
     :ensure t)
-  '
+
   (use-package s
     :ensure t)
 
@@ -305,6 +319,30 @@
   (defvar unison-prompt-regexp " \\[[a-zA-Z]*\\] "
     "Prompt for `unison'.")
 
+
+  (define-minor-mode server-sync-mode
+    "A minor mode for keeping a directory synced with a server copy"
+    :lighter " server-sync-mode"
+    :keymap
+    (let ((map (make-sparse-keymap)))
+      (define-key map (kbd "C-c s") 'sync-to-remote)
+      map))
+
+  (defun maybe-server-sync-mode ()
+    "Maybe enable server-sync-mode if unison-sync variables are present"
+    (hack-local-variables)
+    (when unison-sync-remote-host
+      (server-sync-mode)))
+
+  (advice-add #'set-auto-mode :after #'maybe-server-sync-mode)
+
+  (diminish 'server-sync-mode '(:eval (progn
+					(hack-local-variables)
+					(if (time-less-p
+					     (nth 5 (file-attributes
+						     (buffer-file-name (current-buffer))))
+					     unison-sync-last-sync)
+					    " ●-sync" " ○-sync"))))
   (defun update-project-variables (dirname host-name remote-path local-directory ctime)
     (let ((local-directory (f-join unison-local-sync-root dirname))
 	  (vars
@@ -318,6 +356,7 @@
 	(find-file (f-join default-directory dir-locals-file))
 	(save-buffer)
 	(kill-buffer (current-buffer)))))
+
 
 
   (defun sync-to-local (remote-directory)
@@ -377,6 +416,22 @@
 
 #+end_src
 * Major Modes
+** Proced
+   #+begin_src emacs-lisp :tangle yes
+     (use-package proced
+       :config
+       (defun proced-settings ()
+	 (setf (alist-get 'args proced-grammar-alist)
+	   '("Args" (lambda (x) (format "%.30s" (proced-format-args x)))
+	     left proced-string-lessp nil
+	     (args pid)
+	     (nil t nil)))
+	 (proced-toggle-auto-update 1)
+	 (setq proced-auto-update-interval 0.5)
+	 )
+
+       (add-hook 'proced-mode-hook 'proced-settings))
+   #+end_src
 ** Calculator
 #+begin_src emacs-lisp :tangle yes
   (setq
@@ -821,3 +876,19 @@
     (setq inferior-lisp-program "sbcl")
     (setq slime-contribs '(slime-fancy)))
 #+end_src
+
+* Finally
+** Diminish
+  #+begin_src emacs-lisp :tangle yes
+     (use-package diminish
+       :ensure t
+       :demand t
+       :config
+       (diminish 'auto-revert-mode "ar")
+       (diminish 'yas-minor-mode " y")
+       (diminish 'visual-line-mode)
+       (diminish 'company-mode)
+       (diminish 'undo-tree-mode)
+       (diminish 'eldoc-mode)
+       (diminish 'paredit-mode "(p)"))
+  #+end_src
