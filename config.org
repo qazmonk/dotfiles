@@ -48,7 +48,8 @@
        (setq dashboard-items '((recents  . 5)
 			       (agenda . 5)))
        (setq dashboard-match-agenda-entry
-	     "TODO=\"TODO\"-SCHEDULED={.+}|TODO=\"TODO\"+SCHEDULED<=\"<today>\""))
+	     "TODO=\"TODO\"-SCHEDULED={.+}-reading|TODO=\"TODO\"+SCHEDULED<=\"<today>\"-reading")
+       (setq dashboard-agenda-release-buffers t))
      (tool-bar-mode -1)
      (scroll-bar-mode -1)
      (menu-bar-mode -1)
@@ -154,7 +155,7 @@
   (use-package avy
     :ensure t
     :config
-    (defhydra goto (:color blue :hint nil :idle 0.5)
+    (defhydra goto (:color blue :hint nil :idle 1.0)
       "
   Goto:
   ^Char^              ^Word^                
@@ -166,10 +167,10 @@
   ------------------------------------------
   _l_: avy-goto-line
   "
-      ("c" avy-goto-char-2)
-      ("C" avy-goto-char)
+      ("c" avy-goto-char)
+      ("C" avy-goto-char-2)
       ("L" avy-goto-char-in-line)
-       ("w" avy-goto-word-1)
+      ("w" avy-goto-word-1)
       ;; jump to beginning of some word
       ("W" avy-goto-word-0)
       ;; jump to subword starting with a char
@@ -179,7 +180,7 @@
 
       ("l" avy-goto-line)  )
 
-    (global-set-key (kbd "C-M-SPC") 'goto/body))
+    (global-set-key (kbd "M-j") 'goto/body))
 
 
   (use-package ctrlf
@@ -664,7 +665,20 @@
 	:ensure t
 	:config
 	(setq org-journal-dir "~/Documents/org/journal/"
-	      org-journal-file-type 'monthly))
+	      org-journal-file-type 'monthly)
+	(defun org-journal-new-reading-list-entry (url)
+	  (interactive "sURL: ")
+	  (org-journal-new-entry nil)
+	  (insert "To read,  ")
+	  (insert url)
+	  (org-todo)
+	  (org-set-tags "reading"))
+	(defhydra journal-hydra (:color blue :hint nil)
+	  ("n" org-journal-new-entry "new entry")
+	  ("g" org-journal-open-current-journal-file "open journal"))
+	:bind
+	(("C-c j" . journal-hydra/body)))
+
     #+end_src
 ** Programming
 #+begin_src emacs-lisp :tangle yes
@@ -880,6 +894,18 @@
     (setq inferior-lisp-program "sbcl")
     (setq slime-contribs '(slime-fancy)))
 #+end_src
+
+* Help
+** Find
+*** Locations to search
+    - one location /usr/​bin​/find [location1]
+    - two locations /usr/​bin​/find [location1] [locat​ion2]
+    - N locations/usr/​bin​/find [locat​ion1] [locat​ion2] ...[locat​ionN]
+
+    can specify 0 or more locations to search
+    if 0 locations are specified then the current
+    directory will be searched
+    locations separated by space character
 
 * Finally
 ** Diminish
