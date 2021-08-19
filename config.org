@@ -37,6 +37,10 @@
    :END:
    #+begin_src emacs-lisp :tangle yes
      (setq inhibit-startup-screen t)
+     (use-package mode-line-bell
+       :ensure t
+       :config
+       (mode-line-bell-mode))
      (use-package dashboard
        :ensure t
        :config
@@ -74,10 +78,7 @@
        (moody-replace-vc-mode))
 
 
-     (use-package mode-line-bell
-       :ensure t
-       :config
-       (mode-line-bell-mode))
+
    #+end_src
 
 ** Keyboard and Movement
