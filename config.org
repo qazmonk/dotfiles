@@ -37,19 +37,13 @@
    :END:
    #+begin_src emacs-lisp :tangle yes
      (setq inhibit-startup-screen t)
-     (use-package dashboard
+
+     (use-package mode-line-bell
        :ensure t
        :config
-       (dashboard-setup-startup-hook)
-       (setq initial-buffer-choice (lambda () (get-buffer "*dashboard*")))
-       (setq dashboard-init-info "")
-       (setq dashboard-footer-messages '(""))
-       (setq dashboard-org-agenda-categories '("Tasks"))
-       (setq dashboard-items '((recents  . 5)
-			       (agenda . 5)))
-       (setq dashboard-match-agenda-entry
-	     "TODO=\"TODO\"-SCHEDULED={.+}-reading|TODO=\"TODO\"+SCHEDULED<=\"<today>\"-reading")
-       (setq dashboard-agenda-release-buffers t))
+       (mode-line-bell-mode))
+
+
      (tool-bar-mode -1)
      (scroll-bar-mode -1)
      (menu-bar-mode -1)
@@ -74,10 +68,22 @@
        (moody-replace-vc-mode))
 
 
-     (use-package mode-line-bell
+     (use-package dashboard
        :ensure t
+       :after org
        :config
-       (mode-line-bell-mode))
+
+       (setq dashboard-init-info "")
+       (setq dashboard-footer-messages '(""))
+       (setq dashboard-org-agenda-categories '("Tasks"))
+       (setq dashboard-items '((recents  . 5)
+			       (agenda . 5)))
+       (setq dashboard-match-agenda-entry
+	     "TODO=\"TODO\"-SCHEDULED={.+}-reading|TODO=\"TODO\"+SCHEDULED<=\"<today>\"-reading")
+       (setq dashboard-agenda-release-buffers t)
+       (dashboard-setup-startup-hook)
+       (dashboard-refresh-buffer)
+       (setq initial-buffer-choice (lambda () (get-buffer "*dashboard*"))))
    #+end_src
 
 ** Keyboard and Movement
@@ -267,7 +273,8 @@
      (use-package yasnippet
        :ensure t
        :config
-       (yas-global-mode))
+       (yas-global-mode)
+       (add-to-list 'yas-snippet-dirs "~/dotfiles/snippits/"))
      (use-package yasnippet-snippets
        :ensure t)
    #+end_src
@@ -391,12 +398,18 @@
     (let ((host-name (file-remote-p remote-directory 'host))
 	  (dirname (f-base (file-remote-p remote-directory 'localname)))
 	  (remote-path (f-dirname (file-remote-p remote-directory 'localname))))
+      (print host-name)
+      (print dirname)
+      (print remote-path)
       (cl-assert (assoc host-name unison-remote-cli-path-alist)
 		 "Host not found in remote-sync-servercmd-alist")
       (let (;(output-buffer (generate-new-buffer (format "unison [%s]" dirname)))
 	    (local-directory (f-join unison-local-sync-root dirname))
-	    (remote-unison-target (format "ssh://%s/" host-name))
+	    (remote-unison-target (format "ssh://%s/%s" host-name remote-path))
 	    (remote-servercmd (cdr (assoc host-name unison-remote-cli-path-alist))))
+	(print local-directory)
+	(print remote-unison-target)
+	(print remote-servercmd)
 	(let ((default-directory local-directory)
 	      (comint-buffer))
 	  (update-project-variables dirname host-name remote-path local-directory (current-time))
@@ -453,8 +466,7 @@
 	     (args pid)
 	     (nil t nil)))
 	 (proced-toggle-auto-update 1)
-	 (setq proced-auto-update-interval 0.5)
-	 )
+	 (setq proced-auto-update-interval 0.5))
 
        (add-hook 'proced-mode-hook 'proced-settings))
    #+end_src
@@ -590,7 +602,7 @@
     (let ((file (make-temp-file "latext-to-png" nil ".tex")))
       (with-temp-file file
 	(insert (format "\\documentclass[convert={outfile=%s,density=1000},border={0cm 0.2cm}]{standalone}\\usepackage{mymacros} \\begin{document}"
-			output-file))
+			(expand-file-name output-file)))
 	(insert (format "$%s$" equation))
 	(insert "\\end{document}"))
       (start-process-shell-command
@@ -609,7 +621,7 @@
     (let ((file (make-temp-file "latext-to-png" nil ".tex")))
       (with-temp-file file
 	(insert (format "\\documentclass[preview,convert={outfile=%s,density=1000}]{standalone}\\usepackage{mymacros} \\begin{document}"
-			output-file))
+			(expand-file-name output-file)))
 	(insert (format "%s" equation))
 	(insert "\\end{document}"))
       (start-process-shell-command
@@ -725,81 +737,56 @@
    #+end_src
 *** LSP
 #+begin_src emacs-lisp :tangle yes
-  (use-package lsp-mode
-    :ensure t
-    :config
-    (setq gc-cons-threshold 100000000)
-    (setq read-process-output-max (* 1024 1024))
-    ;; (lsp-register-client
-    ;;  (make-lsp-client :new-connection (lsp-tramp-connection "jedi-language-server")
-    ;; 		    :major-modes '(python-mode)
-    ;; 		    :remote? t
-    ;; 		    :server-id 'jedi-remote))
+  ;; (use-package lsp-mode
+  ;;   :ensure t
+  ;;   :config
+  ;;   (setq gc-cons-threshold 100000000)
+  ;;   (setq read-process-output-max (* 1024 1024))
+  ;;   ;; (lsp-register-client
+  ;;   ;;  (make-lsp-client :new-connection (lsp-tramp-connection "jedi-language-server")
+  ;;   ;; 		    :major-modes '(python-mode)
+  ;;   ;; 		    :remote? t
+  ;;   ;; 		    :server-id 'jedi-remote))
 
-    ;; (lsp-register-client
-    ;;  (make-lsp-client :new-connection (lsp-tramp-connection "pyls")
-    ;; 		    :major-modes '(python-mode)
-    ;; 		    :remote? t
-    ;; 		    :server-id 'pyls-remote))
+  ;;   ;; (lsp-register-client
+  ;;   ;;  (make-lsp-client :new-connection (lsp-tramp-connection "pyls")
+  ;;   ;; 		    :major-modes '(python-mode)
+  ;;   ;; 		    :remote? t
+  ;;   ;; 		    :server-id 'pyls-remote))
 
-    ;; (add-to-list 'lsp-enabled-clients 'pyls)
-    ;; (add-to-list 'lsp-enabled-clients 'pyls-remote)
+  ;;   ;; (add-to-list 'lsp-enabled-clients 'pyls)
+  ;;   ;; (add-to-list 'lsp-enabled-clients 'pyls-remote)
 
-    ;; (lsp-register-client
-    ;;  (make-lsp-client :new-connection (lsp-tramp-connection "pyright")
-    ;; 		    :major-modes '(python-mode)
-    ;; 		    :remote? t
-    ;; 		    :server-id 'pyright-remote))
-    (use-package lsp-ui
-      :ensure t
-      :hook ((lsp-mode . lsp-ui-mode)))
+  ;;   ;; (lsp-register-client
+  ;;   ;;  (make-lsp-client :new-connection (lsp-tramp-connection "pyright")
+  ;;   ;; 		    :major-modes '(python-mode)
+  ;;   ;; 		    :remote? t
+  ;;   ;; 		    :server-id 'pyright-remote))
+  ;;   (use-package lsp-ui
+  ;;     :ensure t
+  ;;     :hook ((lsp-mode . lsp-ui-mode)))
 
-    :hook
-    ((python-mode . lsp-mode)
-     (lsp-after-initialize . (lambda () (setq company-backends
-					      (delete 'company-capf company-backends))))))
+  ;;   :hook
+  ;;   ((python-mode . lsp-mode)
+  ;;    ;; (lsp-after-initialize . (lambda () (setq company-backends
+  ;;    ;; 					    (delete 'company-capf company-backends))))
+  ;;    ))
 
+  (use-package eglot
+    :ensure t)
 #+end_src
 *** Python
 #+begin_src emacs-lisp :tangle yes
   (use-package python
     :init
-    (add-hook 'python-mode-hook (lambda()
-				  (make-local-variable 'company-backends)
-				  (setq company-backends '((company-files 
-							    company-capf
-							    company-dabbrev-code))))))
+    (add-hook 'python-mode-hook 'eglot-ensure))
 
-  (use-package lsp-python-ms
-    :ensure t
-    :init (setq lsp-python-ms-auto-install-server t)
-    :hook (python-mode . (lambda ()
-			    (require 'lsp-python-ms)
-			    (lsp)))
-    :config
-    (lsp-register-client
-     (make-lsp-client
-      :new-connection (lsp-tramp-connection  "/home/nchodosh/.local/etc/mspyls/Microsoft.Python.LanguageServer")
-      :major-modes (append '(python-mode) lsp-python-ms-extra-major-modes)
-      :server-id 'mspyls-remote
-      :remote? t
-      :priority 1
-      ;; :initialization-options 'lsp-python-ms--extra-init-params
-      ;; :notification-handlers (lsp-ht ("python/languageServerStarted"
-      ;; 				    'lsp-python-ms--language-server-started-callback)
-      ;;                                ("telemetry/event" 'ignore)
-      ;;                                ("python/reportProgress"
-      ;; 				    'lsp-python-ms--report-progress-callback)
-      ;;                                ("python/beginProgress"
-      ;; 				    'lsp-python-ms--begin-progress-callback)
-      ;;                                ("python/endProgress"
-      ;; 				    'lsp-python-ms--end-progress-callback))
-      :initialized-fn (lambda (workspace)
-			(with-lsp-workspace workspace
-			  (lsp--set-configuration (lsp-configuration-section "python"))))))
-
-    (add-to-list 'lsp-enabled-clients 'mspyls)
-    (add-to-list 'lsp-enabled-clients 'mspyls-remote))  ; or lsp-deferred
+  ;; (use-package lsp-python-ms
+  ;;   :ensure t
+  ;;   :init (setq lsp-python-ms-auto-install-server t)
+  ;;   :config
+  ;;   (add-to-list 'lsp-enabled-clients 'mspyls))
+					  ; or lsp-deferred
   ;; (use-package lsp-pyright
   ;;   :ensure t
   ;;   :after (lsp-mode)
@@ -828,6 +815,15 @@
   ;;     :notification-handlers (lsp-ht ("pyright/beginProgress" 'lsp-pyright--begin-progress-callback)
   ;;                                    ("pyright/reportProgress" 'lsp-pyright--report-progress-callback)
   ;;                                    ("pyright/endProgress" 'lsp-pyright--end-progress-callback)))))
+
+  ;; (use-package lsp-pyright
+  ;;   :ensure t
+  ;;   :after (lsp-mode)
+  ;;   :config
+  ;;   (add-to-list 'lsp-enabled-clients 'pyright)
+  ;;   :hook (python-mode . (lambda ()
+  ;; 			  (require 'lsp-pyright))))
+					  ; or lsp-deferred
 
 
   (define-derived-mode pickle-mode python-mode "pickle"
@@ -929,6 +925,10 @@
     locations separated by space character
 
 * Finally
+** Dashboard
+   #+begin_src emacs-lisp
+
+   #+end_src
 ** Diminish
   #+begin_src emacs-lisp :tangle yes
      (use-package diminish
