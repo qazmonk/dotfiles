@@ -20,6 +20,7 @@
     (unless (package-installed-p 'use-package)
       (package-install 'use-package))
     (require 'use-package)
+    (setq use-package-compute-statistics t)
   #+end_src
 ** Backups
 #+begin_src emacs-lisp :tangle yes
@@ -275,10 +276,12 @@
 		company-dabbrev-code))))
      (use-package yasnippet
        :ensure t
+       :defer t
        :config
-       (yas-global-mode)
+       ;(yas-global-mode)
        (add-to-list 'yas-snippet-dirs "~/dotfiles/snippits/"))
      (use-package yasnippet-snippets
+       :defer t
        :ensure t)
    #+end_src
 ** Undo
@@ -572,28 +575,24 @@
 ** Magit
 
    #+begin_src emacs-lisp :tangle yes
-     (use-package magit
-       :ensure t)
+	  (use-package magit
+	    :ensure t
+	    :defer t)
    #+end_src
 ** LATEX
 #+begin_src emacs-lisp :tangle yes
-  (use-package company-auctex
-    :ensure t)
+  ;; (use-package company-auctex
+  ;;   :ensure t
+  ;;   :defer t)
+  ;; (use-package font-latex
+  ;;   :ensure t
+  ;;   :defer t)
 
-  (use-package tex
-    :ensure auctex
-    :mode ("\\.tex\\'". LaTeX-mode)
-    :after (lsp-mode)
-    :init (add-hook 'LaTeX-mode-hook #'lsp-mode)
-    (add-hook 'LaTeX-mode-hook #'lsp)
-    (add-to-list 'lsp-enabled-clients 'digestif))
-
-  (use-package font-latex)
-
-  ;; (use-package auctex
-  ;;   :requires tex
-  ;;   :mode "\\.tex\\'"
-  ;;   :init (add-hook 'LaTeX-mode-hook #'lsp-mode))
+  (use-package auctex
+    :requires tex
+    :mode "\\.tex\\'"
+    :init
+    (add-hook 'LaTeX-mode-hook #'eglot-ensure))
 
   ;; Command for generating pngs of latex equations
 
@@ -715,6 +714,28 @@
 	:bind
 	(("C-c j" . journal-hydra/body)))
 
+      (use-package org-ref
+	:defer t
+	:ensure t
+	:config
+	(setq bibtex-completion-bibliography (directory-files
+					      "~/Documents/LuceyResearch/library/" t ".*\\.bib")
+	      bibtex-completion-notes-path "~/Documents/LuceyResearch/library/notes/"))
+
+      ;; (use-package org-roam
+      ;;   :ensure t
+      ;;   :init
+      ;;   (setq org-roam-v2-ack t)
+      ;;   :custom
+      ;;   (org-roam-directory "~/org-roam")
+      ;;   (org-roam-completion-everywhere t)
+      ;;   :bind (("C-c n l" . org-roam-buffer-toggle)
+      ;; 	 ("C-c n f" . org-roam-node-find)
+      ;; 	 ("C-c n i" . org-roam-node-insert)
+      ;; 	 :map org-mode-map
+      ;; 	 ("C-M-i"    . completion-at-point))
+      ;;   :config
+      ;;   (org-roam-setup))
     #+end_src
 ** Programming
 #+begin_src emacs-lisp :tangle yes
@@ -740,49 +761,56 @@
    #+end_src
 *** LSP
 #+begin_src emacs-lisp :tangle yes
-  ;; (use-package lsp-mode
-  ;;   :ensure t
-  ;;   :config
-  ;;   (setq gc-cons-threshold 100000000)
-  ;;   (setq read-process-output-max (* 1024 1024))
-  ;;   ;; (lsp-register-client
-  ;;   ;;  (make-lsp-client :new-connection (lsp-tramp-connection "jedi-language-server")
-  ;;   ;; 		    :major-modes '(python-mode)
-  ;;   ;; 		    :remote? t
-  ;;   ;; 		    :server-id 'jedi-remote))
+    ;; (use-package lsp-mode
+    ;;   :ensure t
+    ;;   :config
+    ;;   (setq gc-cons-threshold 100000000)
+    ;;   (setq read-process-output-max (* 1024 1024))
+    ;;   ;; (lsp-register-client
+    ;;   ;;  (make-lsp-client :new-connection (lsp-tramp-connection "jedi-language-server")
+    ;;   ;; 		    :major-modes '(python-mode)
+    ;;   ;; 		    :remote? t
+    ;;   ;; 		    :server-id 'jedi-remote))
 
-  ;;   ;; (lsp-register-client
-  ;;   ;;  (make-lsp-client :new-connection (lsp-tramp-connection "pyls")
-  ;;   ;; 		    :major-modes '(python-mode)
-  ;;   ;; 		    :remote? t
-  ;;   ;; 		    :server-id 'pyls-remote))
+    ;;   ;; (lsp-register-client
+    ;;   ;;  (make-lsp-client :new-connection (lsp-tramp-connection "pyls")
+    ;;   ;; 		    :major-modes '(python-mode)
+    ;;   ;; 		    :remote? t
+    ;;   ;; 		    :server-id 'pyls-remote))
 
-  ;;   ;; (add-to-list 'lsp-enabled-clients 'pyls)
-  ;;   ;; (add-to-list 'lsp-enabled-clients 'pyls-remote)
+    ;;   ;; (add-to-list 'lsp-enabled-clients 'pyls)
+    ;;   ;; (add-to-list 'lsp-enabled-clients 'pyls-remote)
 
-  ;;   ;; (lsp-register-client
-  ;;   ;;  (make-lsp-client :new-connection (lsp-tramp-connection "pyright")
-  ;;   ;; 		    :major-modes '(python-mode)
-  ;;   ;; 		    :remote? t
-  ;;   ;; 		    :server-id 'pyright-remote))
-  ;;   (use-package lsp-ui
-  ;;     :ensure t
-  ;;     :hook ((lsp-mode . lsp-ui-mode)))
+    ;;   ;; (lsp-register-client
+    ;;   ;;  (make-lsp-client :new-connection (lsp-tramp-connection "pyright")
+    ;;   ;; 		    :major-modes '(python-mode)
+    ;;   ;; 		    :remote? t
+    ;;   ;; 		    :server-id 'pyright-remote))
+    ;;   (use-package lsp-ui
+    ;;     :ensure t
+    ;;     :hook ((lsp-mode . lsp-ui-mode)))
 
-  ;;   :hook
-  ;;   ((python-mode . lsp-mode)
-  ;;    ;; (lsp-after-initialize . (lambda () (setq company-backends
-  ;;    ;; 					    (delete 'company-capf company-backends))))
-  ;;    ))
+    ;;   :hook
+    ;;   ((python-mode . lsp-mode)
+    ;;    ;; (lsp-after-initialize . (lambda () (setq company-backends
+    ;;    ;; 					    (delete 'company-capf company-backends))))
+    ;;    ))
 
-  (use-package eglot
-    :ensure t)
+    (use-package eglot
+      :ensure t
+      :defer t)
 #+end_src
 *** Python
 #+begin_src emacs-lisp :tangle yes
   (use-package python
     :init
     (add-hook 'python-mode-hook 'eglot-ensure))
+
+  (use-package conda
+    :ensure t
+    :config
+    (setq conda-anaconda-home "/home/nate/miniconda3/")
+    (setq conda-env-home-directory "/home/nate/miniconda3/"))
 
   ;; (use-package lsp-python-ms
   ;;   :ensure t
