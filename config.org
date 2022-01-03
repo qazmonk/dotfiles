@@ -700,7 +700,8 @@
 	:ensure t
 	:config
 	(setq org-journal-dir "~/Documents/org/journal/"
-	      org-journal-file-type 'monthly)
+	      org-journal-file-type 'monthly
+	      org-journal-file-format "%Y%m%d.org")
 	(defun org-journal-new-reading-list-entry (url)
 	  (interactive "sURL: ")
 	  (org-journal-new-entry nil)
