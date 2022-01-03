@@ -22,6 +22,18 @@
     (require 'use-package)
     (setq use-package-compute-statistics t)
   #+end_src
+** Utility
+#+begin_src emacs-lisp :tangle yes
+  (use-package f
+    :ensure t)
+
+  (use-package s
+    :ensure t)
+
+  (use-package dash
+    :ensure t)
+
+#+end_src
 ** Backups
 #+begin_src emacs-lisp :tangle yes
 (setq backup-directory-alist '(("." . "~/.emacs.d/backup"))
@@ -217,7 +229,7 @@
   ;; (use-package swiper
   ;;   :ensure t
   ;;   :bind (("C-s" . swiper)))
-
+ 
   ;; (use-package ivy-hydra
   ;;   :ensure t)
 
@@ -310,12 +322,6 @@
 #+end_src
 ** Server Sync
 #+begin_src emacs-lisp :tangle yes
-  (use-package f
-    :ensure t)
-
-  (use-package s
-    :ensure t)
-
   (use-package comint
     :demand t)
 
@@ -810,8 +816,10 @@
   (use-package conda
     :ensure t
     :config
-    (setq conda-anaconda-home "/home/nate/miniconda3/")
-    (setq conda-env-home-directory "/home/nate/miniconda3/"))
+     (let ((home (-first #'f-exists?
+			 '("/home/nate/miniconda3/" "/home/nate/anaconda3/"))))
+      (setq conda-anaconda-home home)
+      (setq conda-env-home-directory home)))
 
   ;; (use-package lsp-python-ms
   ;;   :ensure t
