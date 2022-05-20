@@ -64,6 +64,7 @@
      (scroll-bar-mode -1)
      (menu-bar-mode -1)
      (global-visual-line-mode 1)
+     (add-hook 'prog-mode-hook 'display-line-numbers-mode)
 
      (defalias 'yes-or-no-p 'y-or-n-p)
 
@@ -176,6 +177,8 @@
 
   (use-package avy
     :ensure t
+    :bind (("M-g j" . avy-goto-char)
+	   ("M-g w" . avy-goto-word-1))
     :config
     (defhydra goto (:color blue :hint nil :idle 1.0)
       "
@@ -271,21 +274,21 @@
 
 ** Text Completion and Expansion
    #+begin_src emacs-lisp :tangle yes
-     (use-package company
-       :ensure t
-       :bind (("C-<tab>" . company-complete)
-	      :map company-active-map
-		   ("C-n" . company-select-next)
-		   ("C-p" . company-select-previous))
+     ;; (use-package company
+     ;;   :ensure t
+     ;;   :bind (("C-<tab>" . company-complete)
+     ;; 	 :map company-active-map
+     ;; 	      ("C-n" . company-select-next)
+     ;; 	      ("C-p" . company-select-previous))
 
-       :config
-       (setq company-ide-delay 0)
-       (global-company-mode t)
-       (setq company-backends
-	     '((company-files 
-		company-keywords 
-		company-capf
-		company-dabbrev-code))))
+     ;;   :config
+     ;;   (setq company-ide-delay 0)
+     ;;   (global-company-mode t)
+     ;;   (setq company-backends
+     ;; 	'((company-files 
+     ;; 	   company-keywords 
+     ;; 	   company-capf
+     ;; 	   company-dabbrev-code))))
      (use-package yasnippet
        :ensure t
        :defer t
@@ -295,6 +298,49 @@
      (use-package yasnippet-snippets
        :defer t
        :ensure t)
+
+     ;; Enable Corfu completion UI
+     ;; See the Corfu README for more configuration tips.
+     (use-package corfu
+       :ensure t
+       :init
+       (corfu-global-mode)
+       :config
+       (setq corfu-auto t))
+
+     ;; Add extensions
+     (use-package cape
+       :ensure t
+       ;; Bind dedicated completion commands
+       :bind (("C-c p p" . completion-at-point) ;; capf
+	      ("C-c p t" . complete-tag)        ;; etags
+	      ("C-c p d" . cape-dabbrev)        ;; or dabbrev-completion
+	      ("C-c p f" . cape-file)
+	      ("C-c p k" . cape-keyword)
+	      ("C-c p s" . cape-symbol)
+	      ("C-c p a" . cape-abbrev)
+	      ("C-c p i" . cape-ispell)
+	      ("C-c p l" . cape-line)
+	      ("C-c p w" . cape-dict)
+	      ("C-c p \\" . cape-tex)
+	      ("C-c p _" . cape-tex)
+	      ("C-c p ^" . cape-tex)
+	      ("C-c p &" . cape-sgml)
+	      ("C-c p r" . cape-rfc1345))
+       :init
+       ;; Add `completion-at-point-functions', used by `completion-at-point'.
+       (add-to-list 'completion-at-point-functions #'cape-file)
+       (add-to-list 'completion-at-point-functions #'cape-tex)
+       (add-to-list 'completion-at-point-functions #'cape-dabbrev)
+       (add-to-list 'completion-at-point-functions #'cape-keyword)
+       ;;(add-to-list 'completion-at-point-functions #'cape-sgml)
+       ;;(add-to-list 'completion-at-point-functions #'cape-rfc1345)
+       ;;(add-to-list 'completion-at-point-functions #'cape-abbrev)
+       ;;(add-to-list 'completion-at-point-functions #'cape-ispell)
+       ;;(add-to-list 'completion-at-point-functions #'cape-dict)
+       ;;(add-to-list 'completion-at-point-functions #'cape-symbol)
+       ;;(add-to-list 'completion-at-point-functions #'cape-line)
+     )
    #+end_src
 ** Undo
 #+begin_src emacs-lisp :tangle yes
@@ -354,12 +400,20 @@
     (put sym 'safe-local-variable 'stringp))
   (put 'unison-sync-last-sync 'safe-local-variable 'listp)
 
-  (defvar unison-mode-map
+  (defun server-sync-send-input-no-newline ()
+    (interactive)
+    (comint-send-string (buffer-name) (thing-at-point 'line t)))
+
+  (defvar server-sync-command-map
     (let ((map (nconc (make-sparse-keymap) comint-mode-map)))
-      ;; example definition
-      (define-key map "\t" 'completion-at-point)
+      (define-key map (kbd "RET") 'server-sync-send-input-no-newline)
       map)
-    "Basic mode map for `run-cassandra'")
+    "Basic mode map for `server-sync-mode'")
+
+  (define-derived-mode server-sync-command comint-mode "Server Sync Command"
+    "Major mode for interating with the server sync program.")
+
+
 
   (defvar unison-prompt-regexp " \\[[a-zA-Z]*\\] "
     "Prompt for `unison'.")
@@ -372,6 +426,7 @@
     (let ((map (make-sparse-keymap)))
       (define-key map (kbd "C-c s") 'sync-to-remote)
       map))
+
 
   (defun maybe-server-sync-mode ()
     "Maybe enable server-sync-mode if unison-sync variables are present"
@@ -431,7 +486,8 @@
 			     unison-local-sync-root remote-unison-target
 			     "-path" dirname
 			     "-servercmd" remote-servercmd))
-	  (pop-to-buffer-same-window comint-buffer)))))
+	  (pop-to-buffer-same-window comint-buffer)
+	  (server-sync-command)))))
 
 
   (defun sync-to-remote ()
@@ -459,11 +515,25 @@
 				   (progn
 				     (update-project-variables ,dirname ,host-name ,remote-path ,local-directory (list ,@(current-time)))
 				     (pop-to-buffer-same-window ,(current-buffer)))))
-	  (pop-to-buffer-same-window comint-buffer)))))
+	  (pop-to-buffer-same-window comint-buffer)
+	  (server-sync-command)))))
 
 
 
 
+
+#+end_src
+** Gif Maker
+#+begin_src emacs-lisp
+  (defun pngs-to-gif (output-file fmtstr framerate)
+    (interactive "FOutput File: \nsFormat String: \nnFramerate:")
+    (let* ((directory (f-dirname output-file))
+	   (default-directory directory)
+	   (cmdstr "ffmpeg -y -f image2 -framerate %d -i '%s' -vf 'split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' %s")
+	   (cmd (format cmdstr framerate fmtstr (f-filename output-file))))
+      (when (or (not (f-exists? output-file))
+		(yes-or-no-p "Output file exists, overwrite?"))
+	(start-process-shell-command "pngs-to-gif" (get-buffer-create "*ffmpeg pngs to gif*") cmd))))
 
 #+end_src
 * Major Modes
@@ -644,6 +714,19 @@
 	file))))
 
 #+end_src
+** Markdown
+   #+begin_src emacs-lisp :tangle yes
+     (use-package markdown-mode
+       :ensure t
+       :mode ("README\\.md\\'" . gfm-mode)
+       :init (setq markdown-command "multimarkdown"))
+   #+end_src
+** YAML
+   #+begin_src emacs-lisp :tangle yes
+     (use-package yaml-mode
+       :ensure t
+       :mode "\\\\.yaml\\\\")
+   #+end_src
 ** git
 #+BEGIN_SRC emacs-lisp
 (defun nates-git-ignore-mode ()
@@ -652,6 +735,8 @@
 #+END_SRC
 ** Org
     #+begin_src emacs-lisp :tangle yes
+      (setf nates-org-root (-first #'f-directory-p '("~/org/" "~/Documents/org")))
+
       (use-package org
 
 	:bind (("C-c r" . org-capture)
@@ -668,11 +753,10 @@
 	:config
 	; add org-journal files to regex, might be slow
 	(setq org-agenda-file-regexp "\\`\\\([^.].*\\.org\\\|[0-9]\\\{8\\\}\\\(\\.gpg\\\)?\\\)\\'")
-	(dolist (root '("~/org/" "~/Documents/org/"))
-	  (dolist (file '("phone-journal.org" "journal/"))
-	    (let ((f (f-join root file)))
-	      (when (or (f-directory-p f) (f-file-p f))
-		(add-to-list 'org-agenda-files f)))))
+	(dolist (file '("phone-journal.org" "journal/"))
+	  (let ((f (f-join nates-org-root file)))
+	    (when (or (f-directory-p f) (f-file-p f))
+	      (add-to-list 'org-agenda-files f))))
 	(setq org-directory "~/Documents/org")
 	(setq org-default-notes-file "~/Documents/org/agenda/notes.org")
 	(setq org-log-done 'time)
@@ -702,32 +786,57 @@
 	   (shell . t)))
 	(setq org-latex-pdf-process '("latexmk -pdflatex='lualatex -shell-escape -interaction nonstopmode' -pdf -f  %f")))
 
-      (use-package org-journal
-	:ensure t
-	:config
-	(setq org-journal-dir "~/Documents/org/journal/"
-	      org-journal-file-type 'monthly
-	      org-journal-file-format "%Y%m%d.org")
-	(defun org-journal-new-reading-list-entry (url)
-	  (interactive "sURL: ")
-	  (org-journal-new-entry nil)
-	  (insert "To read,  ")
-	  (insert url)
-	  (org-todo)
-	  (org-set-tags "reading"))
-	(defhydra journal-hydra (:color blue :hint nil)
-	  ("n" org-journal-new-entry "new entry")
-	  ("g" org-journal-open-current-journal-file "open journal"))
-	:bind
-	(("C-c j" . journal-hydra/body)))
+      ;; (use-package org-journal
+      ;;   :ensure t
+      ;;   :config
+      ;;   (setq org-journal-dir (f-join nates-org-root "journal")
+      ;; 	org-journal-file-type 'monthly
+      ;; 	org-journal-file-format "%Y%m%d.org")
+      ;;   (defun org-journal-new-reading-list-entry (url)
+      ;;     (interactive "sURL: ")
+      ;;     (org-journal-new-entry nil)
+      ;;     (insert "To read,  ")
+      ;;     (insert url)
+      ;;     (org-todo)
+      ;;     (org-set-tags "reading"))
+      ;;   (defhydra journal-hydra (:color blue :hint nil)
+      ;;     ("n" org-journal-new-entry "new entry")
+      ;;     ("g" org-journal-open-current-journal-file "open journal"))
+      ;;   :bind
+      ;;   (("C-c j" . journal-hydra/body)))
 
       (use-package org-ref
 	:defer t
 	:ensure t
 	:config
-	(setq bibtex-completion-bibliography (directory-files
-					      "~/Documents/LuceyResearch/library/" t ".*\\.bib")
-	      bibtex-completion-notes-path "~/Documents/LuceyResearch/library/notes/"))
+	(let ((bib-dir "~/Documents/LuceyResearch/library/")
+	      (bib-notes "~/Documents/LuceyResearch/library/notes/"))
+	  (when (and (f-exists? bib-dir)(f-exists? bib-notes))
+	   (setq bibtex-completion-bibliography (directory-files
+						 t ".*\\.bib")
+		 bibtex-completion-notes-path "~/Documents/LuceyResearch/library/notes/"))))
+
+
+      (use-package org-roam
+	:ensure t
+	:init
+	(setq org-roam-v2-ack t)
+	:custom
+	(org-roam-directory "/home/nate/org/roam/")
+	(org-roam-completion-everywhere t)
+	:bind (("C-c n l" . org-roam-buffer-toggle)
+	       ("C-c n f" . org-roam-node-find)
+	       ("C-c n i" . org-roam-node-insert)
+	       :map org-mode-map
+	       ("C-M-i" . completion-at-point)
+	       :map org-roam-dailies-map
+	       ("Y" . org-roam-dailies-capture-yesterday)
+	       ("T" . org-roam-dailies-capture-tomorrow))
+	:bind-keymap
+	("C-c n d" . org-roam-dailies-map)
+	:config
+	(require 'org-roam-dailies) ;; Ensure the keymap is available
+	(org-roam-db-autosync-mode))
 
       ;; (use-package org-roam
       ;;   :ensure t
@@ -815,11 +924,17 @@
 
   (use-package conda
     :ensure t
-    :config
+    :demand t
+    :init
      (let ((home (-first #'f-exists?
 			 '("/home/nate/miniconda3/" "/home/nate/anaconda3/"))))
       (setq conda-anaconda-home home)
-      (setq conda-env-home-directory home)))
+      (setq conda-env-home-directory home))
+     ;; if you want auto-activation (see below for details), include:
+     (conda-env-autoactivate-mode t)
+     ;; if you want to automatically activate a conda environment on the opening of a file:
+     (add-hook 'find-file-hook (lambda () (when (bound-and-true-p conda-project-env-path)
+					    (conda-env-activate-for-buffer)))))
 
   ;; (use-package lsp-python-ms
   ;;   :ensure t
