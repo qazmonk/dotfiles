@@ -17,10 +17,30 @@
     ;; (add-to-list 'package-archives '("marmalade" . "https://marmalade-repo.org/packages/"))
 					    ;(add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/"))
     (require 'package)
+<<<<<<< HEAD
+    (unless (package-installed-p 'quelpa)
+      (with-temp-buffer
+	(url-insert-file-contents "https://raw.githubusercontent.com/quelpa/quelpa/master/quelpa.el")
+	(eval-buffer)
+	(quelpa-self-upgrade)))
+    (quelpa
+     '(quelpa-use-package
+       :fetcher git
+       :url "https://github.com/quelpa/quelpa-use-package.git"))
+    (require 'quelpa-use-package)
+
+    (unless (package-installed-p 'use-package)
+      (package-install 'use-package))
+
+    (require 'use-package)
+    (setq use-package-compute-statistics t)
+
+=======
     (unless (package-installed-p 'use-package)
       (package-install 'use-package))
     (require 'use-package)
     (setq use-package-compute-statistics t)
+>>>>>>> origin/master
   #+end_src
 ** Utility
 #+begin_src emacs-lisp :tangle yes
@@ -54,10 +74,6 @@
        :ensure t
        :config
        (mode-line-bell-mode))
-     (use-package dashboard
-       :ensure t
-       :config
-       (mode-line-bell-mode))
 
 
      (tool-bar-mode -1)
@@ -69,9 +85,12 @@
      (defalias 'yes-or-no-p 'y-or-n-p)
 
 
-     (use-package zenburn-theme
-       :ensure t
-       :config (load-theme 'zenburn t))
+     (use-package nano-theme
+       :ensure nil
+       :quelpa (nano-theme
+		:fetcher github
+		:repo "rougier/nano-theme")
+       :config (nano-dark))
 
      (use-package highlight-parentheses
        :ensure t
@@ -89,7 +108,7 @@
        :ensure t
        :after org
        :config
-
+       (setq dashboard-banner-logo-title "")
        (setq dashboard-init-info "")
        (setq dashboard-footer-messages '(""))
        (setq dashboard-org-agenda-categories '("Tasks"))
@@ -99,9 +118,22 @@
        ;; 	"TODO=\"TODO\"-SCHEDULED={.+}-reading|TODO=\"TODO\"+SCHEDULED<=\"<today>\"-reading")
        (setq dashboard-filter-agenda-entry 'dashboard-no-filter-agenda)
        (setq dashboard-agenda-release-buffers t)
+       (setq dashboard-startup-banner 'logo)
        (dashboard-setup-startup-hook)
        (dashboard-refresh-buffer)
        (setq initial-buffer-choice (lambda () (get-buffer "*dashboard*"))))
+
+
+     (use-package diminish
+       :ensure t
+       :demand t
+       :config
+       (diminish 'auto-revert-mode "ar")
+       (diminish 'yas-minor-mode " y")
+       (diminish 'visual-line-mode)
+       (diminish 'undo-tree-mode)
+       (diminish 'eldoc-mode)
+       (diminish 'paredit-mode "(p)"))
    #+end_src
 
 ** Keyboard and Movement
@@ -606,7 +638,12 @@
 #+begin_src emacs-lisp :tangle yes
   (use-package vterm
     :ensure t
-    :bind (:map vterm-mode-map ("C-l" . vterm-send-C-l)))
+    :bind (:map vterm-mode-map ("C-l" . vterm-send-C-l))
+    :config
+    (setq vterm-shell "/usr/bin/zsh")
+    (set-face-foreground 'vterm-color-yellow "dark orange")
+    (set-face-background 'vterm-color-yellow "orange")
+    (set-face-background 'vterm-color-green "dark green"))
 #+end_src
 *** eshell
 #+BEGIN_SRC emacs-lisp
@@ -949,6 +986,9 @@
     (add-hook 'python-mode-hook (lambda () (unless (or (not buffer-file-name)
 						       (file-remote-p buffer-file-name))
 					     (eglot-ensure)))))
+  (use-package pyenv-mode
+    :ensure t
+    :config (pyenv-mode))
 
   (use-package conda
     :ensure t
@@ -1112,17 +1152,4 @@
    #+begin_src emacs-lisp
 
    #+end_src
-** Diminish
-  #+begin_src emacs-lisp :tangle yes
-     (use-package diminish
-       :ensure t
-       :demand t
-       :config
-       (diminish 'auto-revert-mode "ar")
-       (diminish 'yas-minor-mode " y")
-       (diminish 'visual-line-mode)
-       (diminish 'company-mode)
-       (diminish 'undo-tree-mode)
-       (diminish 'eldoc-mode)
-       (diminish 'paredit-mode "(p)"))
-  #+end_src
+
