@@ -95,8 +95,9 @@
        (setq dashboard-org-agenda-categories '("Tasks"))
        (setq dashboard-items '((recents  . 5)
 			       (agenda . 5)))
-       (setq dashboard-match-agenda-entry
-	     "TODO=\"TODO\"-SCHEDULED={.+}-reading|TODO=\"TODO\"+SCHEDULED<=\"<today>\"-reading")
+       ;; (setq dashboard-match-agenda-entry
+       ;; 	"TODO=\"TODO\"-SCHEDULED={.+}-reading|TODO=\"TODO\"+SCHEDULED<=\"<today>\"-reading")
+       (setq dashboard-filter-agenda-entry 'dashboard-no-filter-agenda)
        (setq dashboard-agenda-release-buffers t)
        (dashboard-setup-startup-hook)
        (dashboard-refresh-buffer)
@@ -274,6 +275,7 @@
 
 ** Text Completion and Expansion
    #+begin_src emacs-lisp :tangle yes
+     (setq ispell-program-name "aspell")
      ;; (use-package company
      ;;   :ensure t
      ;;   :bind (("C-<tab>" . company-complete)
@@ -304,7 +306,7 @@
      (use-package corfu
        :ensure t
        :init
-       (corfu-global-mode)
+       (global-corfu-mode)
        :config
        (setq corfu-auto t))
 
@@ -342,6 +344,14 @@
        ;;(add-to-list 'completion-at-point-functions #'cape-line)
      )
    #+end_src
+** Projectile
+
+#+begin_src emacs-lisp
+  (use-package projectile
+    :ensure t
+    :config
+    (projectile-mode +1))
+#+end_src
 ** Undo
 #+begin_src emacs-lisp :tangle yes
 (use-package undo-tree
@@ -736,9 +746,13 @@
 ** Org
     #+begin_src emacs-lisp :tangle yes
       (setf nates-org-root (-first #'f-directory-p '("~/org/" "~/Documents/org")))
+      (when (not nates-org-root)
+	(f-mkdir-full-path "~/org/")
+	(setf nates-org-root "~/org/")
+	(message "Creating org-mode directory at ~/org/"))
 
       (use-package org
-
+	:demand t
 	:bind (("C-c r" . org-capture)
 	       ("C-c l" . org-store-link)
 	       ("C-c a" . org-agenda)
@@ -751,7 +765,7 @@
 	       ("C-M-b" . org-backward-element)
 	       ("C-M-d" . org-down-element))
 	:config
-	; add org-journal files to regex, might be slow
+					      ; add org-journal files to regex, might be slow
 	(setq org-agenda-file-regexp "\\`\\\([^.].*\\.org\\\|[0-9]\\\{8\\\}\\\(\\.gpg\\\)?\\\)\\'")
 	(dolist (file '("phone-journal.org" "journal/"))
 	  (let ((f (f-join nates-org-root file)))
@@ -816,17 +830,24 @@
 	(let ((bib-dir "~/Documents/LuceyResearch/library/")
 	      (bib-notes "~/Documents/LuceyResearch/library/notes/"))
 	  (when (and (f-exists? bib-dir)(f-exists? bib-notes))
-	   (setq bibtex-completion-bibliography (directory-files
-						 t ".*\\.bib")
-		 bibtex-completion-notes-path "~/Documents/LuceyResearch/library/notes/"))))
+	    (setq bibtex-completion-bibliography (directory-files
+						  t ".*\\.bib")
+		  bibtex-completion-notes-path "~/Documents/LuceyResearch/library/notes/"))))
 
 
       (use-package org-roam
 	:ensure t
+	:demand t
 	:init
 	(setq org-roam-v2-ack t)
+	(let ((roam-dir (f-join nates-org-root "roam")))
+	  (unless (f-dir? roam-dir)
+	    (f-mkdir roam-dir))
+	  (setq org-roam-directory roam-dir)
+	  (add-to-list 'org-agenda-files org-roam-directory)
+	  (dolist (file (f-directories org-roam-directory))
+	    (add-to-list 'org-agenda-files file)))
 	:custom
-	(org-roam-directory "/home/nate/org/roam/")
 	(org-roam-completion-everywhere t)
 	:bind (("C-c n l" . org-roam-buffer-toggle)
 	       ("C-c n f" . org-roam-node-find)
@@ -857,6 +878,7 @@
       ;;   :config
       ;;   (org-roam-setup))
     #+end_src
+
 ** Programming
 #+begin_src emacs-lisp :tangle yes
   (use-package flycheck
@@ -924,18 +946,20 @@
 #+begin_src emacs-lisp :tangle yes
   (use-package python
     :init
-    (add-hook 'python-mode-hook 'eglot-ensure))
+    (add-hook 'python-mode-hook (lambda () (unless (or (not buffer-file-name)
+						       (file-remote-p buffer-file-name))
+					     (eglot-ensure)))))
 
   (use-package conda
     :ensure t
     :demand t
     :init
      (let ((home (-first #'f-exists?
-			 '("/home/nate/miniconda3/" "/home/nate/anaconda3/"))))
+			 '("/home/nate/miniconda3/" "/home/nate/anaconda3/" "/Users/nachodosh/opt/anaconda3"))))
       (setq conda-anaconda-home home)
       (setq conda-env-home-directory home))
      ;; if you want auto-activation (see below for details), include:
-     (conda-env-autoactivate-mode t)
+     (conda-env-autoactivate-mode -1)
      ;; if you want to automatically activate a conda environment on the opening of a file:
      (add-hook 'find-file-hook (lambda () (when (bound-and-true-p conda-project-env-path)
 					    (conda-env-activate-for-buffer)))))
