@@ -17,6 +17,7 @@
     ;; (add-to-list 'package-archives '("marmalade" . "https://marmalade-repo.org/packages/"))
 					    ;(add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/"))
     (require 'package)
+<<<<<<< HEAD
     (unless (package-installed-p 'quelpa)
       (with-temp-buffer
 	(url-insert-file-contents "https://raw.githubusercontent.com/quelpa/quelpa/master/quelpa.el")
@@ -34,6 +35,12 @@
     (require 'use-package)
     (setq use-package-compute-statistics t)
 
+=======
+    (unless (package-installed-p 'use-package)
+      (package-install 'use-package))
+    (require 'use-package)
+    (setq use-package-compute-statistics t)
+>>>>>>> origin/master
   #+end_src
 ** Utility
 #+begin_src emacs-lisp :tangle yes
@@ -62,7 +69,6 @@
    :ORDERED:  t
    :END:
    #+begin_src emacs-lisp :tangle yes
-
      (setq inhibit-startup-screen t)
      (use-package mode-line-bell
        :ensure t
