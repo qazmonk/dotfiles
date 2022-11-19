@@ -763,9 +763,10 @@
 	(setq org-capture-templates
 	      `(("t" "TODO Nate" entry (file+datetree "~/Documents/org/tasks.org"  "Tasks")
 		 "* TODO [#C] %?\n   SCHEDULED: <%<%Y-%m-%d %a>>\n  [%<%Y-%m-%d %a>]\n  %a")
-		("n" "Note Here" entry (file+datetree buffer-file-name "Journal")
-		 "* %^{Description}
-      %?")
+	  
+		;; ("n" "Note Here" entry (file+datetree buffer-file-name "Journal")
+      ;; 	   "* %^{Description}
+      ;; %?")
 		("j" "Journal Entry"
 		 entry (file+datetree "~/journal.org")
 		 "* %?"
@@ -773,7 +774,10 @@
 		("N" "Notebook Entry"
 		 entry (file+datetree "~/Documents/org/notebook.org")
 		 "* %^{Description} %^g %?\nAdded: %U"
-		 :empty-lines 1)	  ))
+		 :empty-lines 1)
+		("n" "Notebook Entry (in current file)"
+		 entry (file+datetree buffer-file-name "Notebook")
+		 "* %?")))
 
 	(setq org-modules
 	      (quote
