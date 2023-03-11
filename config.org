@@ -74,6 +74,7 @@
      (menu-bar-mode -1)
      (global-visual-line-mode 1)
      (add-hook 'prog-mode-hook 'display-line-numbers-mode)
+     (setq-default fill-column 100)
 
      (defalias 'yes-or-no-p 'y-or-n-p)
 
@@ -719,7 +720,7 @@
     (interactive "MEquation: \nFOuput File: ")
     (let ((file (make-temp-file "latext-to-png" nil ".tex")))
       (with-temp-file file
-	(insert (format "\\documentclass[convert={outfile=%s,density=1000},border={0cm 0.2cm}]{standalone}\\usepackage{mymacros} \\begin{document}"
+	(insert (format "\\documentclass[convert={outfile=%s,density=1000},border={0cm 0.2cm}]{standalone}\\usepackage{amsmath}\\IfFileExists{mymacros.sty}{\\usepackage{mymacros}}{} \\begin{document}"
 			(expand-file-name output-file)))
 	(insert (format "$%s$" equation))
 	(insert "\\end{document}"))
@@ -738,7 +739,7 @@
     (interactive "MEquation: \nFOuput File: ")
     (let ((file (make-temp-file "latext-to-png" nil ".tex")))
       (with-temp-file file
-	(insert (format "\\documentclass[preview,convert={outfile=%s,density=1000}]{standalone}\\usepackage{mymacros} \\begin{document}"
+	(insert (format "\\documentclass[preview,convert={outfile=%s,density=1000}]{standalone}\\IfFileExists{mymacros.sty}{\\usepackage{mymacros}}{} \\begin{document}"
 			(expand-file-name output-file)))
 	(insert (format "%s" equation))
 	(insert "\\end{document}"))
@@ -783,6 +784,7 @@
 
       (use-package org
 	:demand t
+	:init (setq org-list-allow-alphabetical t)
 	:bind (("C-c r" . org-capture)
 	       ("C-c l" . org-store-link)
 	       ("C-c a" . org-agenda)
@@ -807,7 +809,7 @@
 	(setq org-capture-templates
 	      `(("t" "TODO Nate" entry (file+datetree "~/Documents/org/tasks.org"  "Tasks")
 		 "* TODO [#C] %?\n   SCHEDULED: <%<%Y-%m-%d %a>>\n  [%<%Y-%m-%d %a>]\n  %a")
-	  
+
 		;; ("n" "Note Here" entry (file+datetree buffer-file-name "Journal")
       ;; 	   "* %^{Description}
       ;; %?")
