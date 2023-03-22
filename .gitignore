@@ -21,3 +21,5 @@
 /#.bashrc.global#
 /.#.bashrc.global
 !.p10k.zsh
+!zsh
+!zsh/*
