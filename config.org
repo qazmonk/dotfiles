@@ -47,15 +47,18 @@
     :ensure t)
 
 #+end_src
-** Backups
+** Backups and Autosave
 #+begin_src emacs-lisp :tangle yes
-(setq backup-directory-alist '(("." . "~/.emacs.d/backup"))
-    backup-by-copying t    ; Don't delink hardlinks
-    version-control t      ; Use version numbers on backups
-    delete-old-versions t  ; Automatically delete excess backups
-    kept-new-versions 20   ; how many of the newest versions to keep
-    kept-old-versions 5    ; and how many of the old
-    )
+  (setq backup-directory-alist '(("." . "~/.emacs.d/backup"))
+      backup-by-copying t    ; Don't delink hardlinks
+      version-control t      ; Use version numbers on backups
+      delete-old-versions t  ; Automatically delete excess backups
+      kept-new-versions 20   ; how many of the newest versions to keep
+      kept-old-versions 5    ; and how many of the old
+      )
+
+  (setq auto-save-file-name-transforms
+	`((".*" ,(concat user-emacs-directory "auto-save/") t))) 
 #+end_src
 ** Appearance
    :PROPERTIES:
@@ -108,6 +111,9 @@
        (setq dashboard-org-agenda-categories '("Tasks"))
        (setq dashboard-items '((recents  . 5)
 			       (agenda . 5)))
+       (setq dashboard-match-agenda-entry
+	     "TODO=\"TODO\"")
+
        ;; (setq dashboard-match-agenda-entry
        ;; 	"TODO=\"TODO\"-SCHEDULED={.+}-reading|TODO=\"TODO\"+SCHEDULED<=\"<today>\"-reading")
        (setq dashboard-filter-agenda-entry 'dashboard-no-filter-agenda)
@@ -998,6 +1004,19 @@
      ;; if you want to automatically activate a conda environment on the opening of a file:
      (add-hook 'find-file-hook (lambda () (when (bound-and-true-p conda-project-env-path)
 					    (conda-env-activate-for-buffer)))))
+
+  (use-package python-black
+    :demand t
+    :ensure t
+    :after python
+    :hook (python-mode . python-black-on-save-mode-enable-dwim))
+
+  (use-package python-isort
+    :demand t
+    :ensure t
+    :after python
+    :hook (python-mode . python-isort-on-save-mode))
+
 
   ;; (use-package lsp-python-ms
   ;;   :ensure t

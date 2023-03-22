@@ -4,7 +4,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(eglot-grammarly flycheck-grammarly projectile diminish zenburn-theme yasnippet-snippets use-package undo-tree selectrum-prescient moody mode-line-bell marginalia imenu-anywhere hydra highlight-parentheses f exec-path-from-shell dashboard ctrlf corfu cape avy)))
+   '(python-isort python-black rust-mode eglot-grammarly flycheck-grammarly projectile diminish zenburn-theme yasnippet-snippets use-package undo-tree selectrum-prescient moody mode-line-bell marginalia imenu-anywhere hydra highlight-parentheses f exec-path-from-shell dashboard ctrlf corfu cape avy)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
