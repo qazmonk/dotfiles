@@ -34,6 +34,9 @@
     (require 'use-package)
     (setq use-package-compute-statistics t)
 
+    (setq explicit-shell-file-name "/bin/zsh")
+    (setq shell-file-name "zsh")
+    (setq explicit-zsh-args '("--interactive" "--login"))
   #+end_src
 ** Utility
 #+begin_src emacs-lisp :tangle yes
@@ -87,18 +90,18 @@
        :quelpa (nano-theme
 		:fetcher github
 		:repo "rougier/nano-theme")
-       :config (nano-dark))
+       :config (nano-light))
 
      (use-package highlight-parentheses
        :ensure t
        :hook ((emacs-lisp-mode lisp-mode) . highlight-parentheses-mode))
 
-     (use-package moody
-       :ensure t
-       :config
-       (setq x-underline-at-descent-line t)
-       (moody-replace-mode-line-buffer-identification)
-       (moody-replace-vc-mode))
+     ;; (use-package moody
+     ;;   :ensure t
+     ;;   :config
+     ;;   (setq x-underline-at-descent-line t)
+     ;;   (moody-replace-mode-line-buffer-identification)
+     ;;   (moody-replace-vc-mode))
 
 
      (use-package dashboard
@@ -620,6 +623,15 @@
   (use-package flyspell-correct-ivy
     :ensure t
     :after flyspell-correct)
+
+  ;;; Stefan Monnier <foo at acm.org>. It is the opposite of fill-paragraph    
+  (defun unfill-paragraph (&optional region)
+    "Takes a multi-line paragraph and makes it into a single line of text."
+    (interactive (progn (barf-if-buffer-read-only) '(t)))
+    (let ((fill-column (point-max))
+	  ;; This would override `fill-column' if it's an integer.
+	  (emacs-lisp-docstring-fill-column t))
+      (fill-paragraph nil region)))
 #+end_src
 ** Dired
 #+begin_src emacs-lisp :tangle yes
@@ -702,7 +714,7 @@
 	    :ensure t
 	    :defer t)
    #+end_src
-** LATEX
+** COMMENT LATEX
 #+begin_src emacs-lisp :tangle yes
   ;; (use-package company-auctex
   ;;   :ensure t
@@ -726,9 +738,29 @@
     (interactive "MEquation: \nFOuput File: ")
     (let ((file (make-temp-file "latext-to-png" nil ".tex")))
       (with-temp-file file
-	(insert (format "\\documentclass[convert={outfile=%s,density=1000},border={0cm 0.2cm}]{standalone}\\usepackage{amsmath}\\IfFileExists{mymacros.sty}{\\usepackage{mymacros}}{} \\begin{document}"
+	(insert (format "\\documentclass[convert={outfile=%s,density=1000},border={0cm 0.2cm}]{standalone}\\usepackage{amsmath}\\usepackage{xcolor}\\usepackage{amssymb}\\IfFileExists{mymacros.sty}{\\usepackage{mymacros}}{} \\begin{document}"
 			(expand-file-name output-file)))
 	(insert (format "$%s$" equation))
+	(insert "\\end{document}"))
+      (start-process-shell-command
+       "latex-to-png"
+       (get-buffer-create "*latex-to-png compilation*")
+       (concat
+	"cd "
+	temporary-file-directory
+	" && "
+	"pdflatex "
+	"-shell-escape " 
+	file))))
+
+
+  (defun latex-par-eq-to-png (equation output-file)
+    (interactive "MEquation: \nFOuput File: ")
+    (let ((file (make-temp-file "latext-to-png" nil ".tex")))
+      (with-temp-file file
+	(insert (format "\\documentclass[preview,convert={outfile=%s,density=1000},border={0cm 0cm}]{standalone}\\usepackage{amsmath}\\usepackage{amssymb}\\usepackage{booktabs}\\IfFileExists{mymacros.sty}{\\usepackage{mymacros}}{} \\begin{document}"
+			(expand-file-name output-file)))
+	(insert (format "\\begin{equation}%s\\end{equation}" equation))
 	(insert "\\end{document}"))
       (start-process-shell-command
        "latex-to-png"
@@ -745,7 +777,7 @@
     (interactive "MEquation: \nFOuput File: ")
     (let ((file (make-temp-file "latext-to-png" nil ".tex")))
       (with-temp-file file
-	(insert (format "\\documentclass[preview,convert={outfile=%s,density=1000}]{standalone}\\IfFileExists{mymacros.sty}{\\usepackage{mymacros}}{} \\begin{document}"
+	(insert (format "\\documentclass[preview,convert={outfile=%s,density=1000}]{standalone}\\usepackage{booktabs}\\IfFileExists{mymacros.sty}{\\usepackage{mymacros}}{} \\begin{document}"
 			(expand-file-name output-file)))
 	(insert (format "%s" equation))
 	(insert "\\end{document}"))
@@ -840,6 +872,7 @@
 	 '((emacs-lisp . t)
 	   (python . t)
 	   (shell . t)))
+	(setq org-src-window-setup 'current-window)
 	(setq org-latex-pdf-process '("latexmk -pdflatex='lualatex -shell-escape -interaction nonstopmode' -pdf -f  %f")))
 
       ;; (use-package org-journal
@@ -928,7 +961,7 @@
       (use-package paredit
 	:ensure t
 	:hook ((emacs-lisp-mode . paredit-mode)
-	       (eval-expression-minibuffer-setup . paredit-mode)
+	       ;(eval-expression-minibuffer-setup . paredit-mode)
 	       (lisp-mode . paredit-mode))
 	:bind (("C-)" . paredit-forward-slurp-sexp)
 	       ("C-(" . paredit-backward-slurp-sexp)
@@ -1016,6 +1049,8 @@
     :ensure t
     :after python
     :hook (python-mode . python-isort-on-save-mode))
+
+  (add-hook 'python-mode-hook 'flycheck-mode)
 
 
   ;; (use-package lsp-python-ms
