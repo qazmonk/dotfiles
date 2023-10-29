@@ -1,0 +1,30 @@
+;;; Emacs Bedrock - Nate Chodosh
+;;;
+;;; Mixin: Vterm 
+
+;;; Usage: Append or require this file from init.el for some software
+;;; development-focused packages.
+;;;
+
+;;; Contents:
+;;;
+;;;  - Setup for running vterm with zsh
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;;   Vterm config
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+;; Make sure to install CMake
+
+(use-package vterm
+    :ensure t
+    :bind (:map vterm-mode-map ("C-l" . vterm-send-C-l))
+    :config
+    (setq vterm-shell "/usr/bin/zsh")
+    (set-face-foreground 'vterm-color-yellow "dark orange")
+    (set-face-background 'vterm-color-yellow "orange")
+    (set-face-background 'vterm-color-green "dark green"))

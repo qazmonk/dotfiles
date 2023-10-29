@@ -40,13 +40,24 @@
   | chmod | a+x | ~/dotfiles/bin/setup_dbus_address       |                                     |
   | ln    | -sf | ~/dotfiles/cmds/sbclcompile.sh          | ~/dotfiles/bin/sbclcompile          |
   | chmod | a+x | ~/dotfiles/bin/sbclcompile              |                                     |
-* Link init.el to .emacs
+* DONE Link init.el to .emacs
   #+BEGIN_SRC shell
     make emacs-config
   #+END_SRC
 
   #+RESULTS:
   : ln -s ~/dotfiles/init.el ~/.emacs
+* Setup emacs bedrock
+#+begin_src bash
+set -x
+mkdir -p ~/.emacs.d
+ln -s ~/dotfiles/emacs-bedrock/init.el ~/.emacs.d/init.el
+ln -s ~/dotfiles/emacs-bedrock/earl-init.el ~/.emacs.d/early-init.el
+ln -s ~/dotfiles/emacs-bedrock/mixins ~/.emacs.d/mixins
+#+end_src
+
+#+RESULTS:
+
 * Set up bashrc
   Two part bashrc: bashrc.global which has general shell helpers, and a .bashrc.local for anything you want specific to this machine. You should check .bashrc.lenovo for suggestions and whatever ends up in .bashrc.old which is the existing .bashrc
 #+BEGIN_SRC shell

@@ -23,3 +23,7 @@
 !.p10k.zsh
 !zsh
 !zsh/*
+!emacs-bedrock/*
+!emacs-old-config/*
+!emacs-bedrock
+!emacs-old-config
