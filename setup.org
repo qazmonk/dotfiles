@@ -47,17 +47,8 @@
 
   #+RESULTS:
   : ln -s ~/dotfiles/init.el ~/.emacs
-* Setup emacs bedrock
-#+begin_src bash
-set -x
-mkdir -p ~/.emacs.d
-ln -s ~/dotfiles/emacs-bedrock/init.el ~/.emacs.d/init.el
-ln -s ~/dotfiles/emacs-bedrock/earl-init.el ~/.emacs.d/early-init.el
-ln -s ~/dotfiles/emacs-bedrock/mixins ~/.emacs.d/mixins
-#+end_src
 
 #+RESULTS:
-
 * Set up bashrc
   Two part bashrc: bashrc.global which has general shell helpers, and a .bashrc.local for anything you want specific to this machine. You should check .bashrc.lenovo for suggestions and whatever ends up in .bashrc.old which is the existing .bashrc
 #+BEGIN_SRC shell
@@ -68,3 +59,34 @@ make bashrc
 | chmod | a+x | ~/dotfiles/.bashrc.global |           |    |      |    |           |                |    |
 | if    | [   | -f                        | ~/.bashrc | ]; | then | mv | ~/.bashrc | ~/.bashrc.old; | fi |
 | ln    | -s  | ~/dotfiles/.bashrc.base   | ~/.bashrc |    |      |    |           |                |    |
+* setup zsh
+** Install p10k
+- see https://github.com/romkatv/powerlevel10k#arch-linux
+- but probably just this  
+#+begin_src bash
+sudo pacman -Syu --noconfirm zsh-theme-powerlevel10k
+echo 'source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme' >>~/.zshrc
+
+#+end_src
+#+begin_src bash
+set -x
+if [ -f ~/.zshrc ]; then mv ~/.zshrc ~/.zshrc.old; fi
+ln -s ~/dotfiles/zsh/.zshrc ~/.zshrc
+
+if [ -f ~/.zshenv ]; then mv ~/.zshenv ~/.zshenv.old; fi
+ln -s ~/dotfiles/zsh/.zshenv ~/.zshenv
+
+if [ -f ~/.p10k.zsh ]; then mv ~/.p10k.zsh ~/.p10k.zsh.old; fi
+ln -s ~/dotfiles/.p10k.zsh ~/.p10k.zsh
+#+end_src
+
+#+RESULTS:
+
+* Setup emacs bedrock
+#+begin_src bash
+set -x
+mkdir -p ~/.emacs.d
+ln -s ~/dotfiles/emacs-bedrock/init.el ~/.emacs.d/init.el
+ln -s ~/dotfiles/emacs-bedrock/earl-init.el ~/.emacs.d/early-init.el
+ln -s ~/dotfiles/emacs-bedrock/mixins ~/.emacs.d/mixins
+#+end_src
