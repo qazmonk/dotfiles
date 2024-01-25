@@ -1,4 +1,9 @@
-* Make bin directory for scripts
+Make it possible to eval src blocks with bash
+#+begin_src emacs-lisp
+(org-babel-do-load-languages 'org-babel-load-languages '((emacs-lisp . t) (shell . t)))
+#+end_src
+* Old setup stuff
+** Make bin directory for scripts
   #+BEGIN_SRC shell
     mkdir ~/dotfiles/bin
     cd cmds
@@ -40,7 +45,7 @@
   | chmod | a+x | ~/dotfiles/bin/setup_dbus_address       |                                     |
   | ln    | -sf | ~/dotfiles/cmds/sbclcompile.sh          | ~/dotfiles/bin/sbclcompile          |
   | chmod | a+x | ~/dotfiles/bin/sbclcompile              |                                     |
-* DONE Link init.el to .emacs
+** DONE Link init.el to .emacs
   #+BEGIN_SRC shell
     make emacs-config
   #+END_SRC
@@ -49,7 +54,7 @@
   : ln -s ~/dotfiles/init.el ~/.emacs
 
 #+RESULTS:
-* Set up bashrc
+** Set up bashrc
   Two part bashrc: bashrc.global which has general shell helpers, and a .bashrc.local for anything you want specific to this machine. You should check .bashrc.lenovo for suggestions and whatever ends up in .bashrc.old which is the existing .bashrc
 #+BEGIN_SRC shell
 make bashrc
@@ -59,6 +64,7 @@ make bashrc
 | chmod | a+x | ~/dotfiles/.bashrc.global |           |    |      |    |           |                |    |
 | if    | [   | -f                        | ~/.bashrc | ]; | then | mv | ~/.bashrc | ~/.bashrc.old; | fi |
 | ln    | -s  | ~/dotfiles/.bashrc.base   | ~/.bashrc |    |      |    |           |                |    |
+
 * setup zsh
 ** Install p10k
 - see https://github.com/romkatv/powerlevel10k#arch-linux
@@ -66,7 +72,6 @@ make bashrc
 #+begin_src bash
 sudo pacman -Syu --noconfirm zsh-theme-powerlevel10k
 echo 'source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme' >>~/.zshrc
-
 #+end_src
 #+begin_src bash
 set -x
@@ -81,7 +86,14 @@ ln -s ~/dotfiles/.p10k.zsh ~/.p10k.zsh
 #+end_src
 
 #+RESULTS:
-
+* pyenv
+#+begin_src bash
+curl https://pyenv.run | bash
+#+end_src
+* cmake
+#+begin_src bash
+sudo pacman -Syu cmake
+#+end_src
 * Setup emacs bedrock
 #+begin_src bash
 set -x
@@ -90,3 +102,5 @@ ln -s ~/dotfiles/emacs-bedrock/init.el ~/.emacs.d/init.el
 ln -s ~/dotfiles/emacs-bedrock/earl-init.el ~/.emacs.d/early-init.el
 ln -s ~/dotfiles/emacs-bedrock/mixins ~/.emacs.d/mixins
 #+end_src
+
+#+RESULTS:
