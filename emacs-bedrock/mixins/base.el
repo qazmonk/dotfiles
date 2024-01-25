@@ -46,6 +46,8 @@
   :bind (("C-c j" . avy-goto-line)
          ("s-j"   . avy-goto-char-timer)))
 
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;;   Power-ups: Embark and Consult
@@ -60,7 +62,7 @@
   :bind (("C-x b" . consult-buffer) ; orig. switch-to-buffer
          ("M-y" . consult-yank-pop) ; orig. yank-pop
          ("C-s" . consult-line)
-	 ("C-c RET" . consult-global-mark))    ; orig. isearch
+	 ("M-SPC" . consult-global-mark))    ; orig. isearch
   :config
   ;; Narrowing lets you restrict results to certain groups of candidates
   (setq consult-narrow-key "<"))
