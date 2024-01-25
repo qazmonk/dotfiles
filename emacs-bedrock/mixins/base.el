@@ -6,11 +6,21 @@
 ;;; enhancements.
 
 ;;; Contents:
+;;;  - minor global keybinding edits
 ;;;  - treesit-grammer urls
 ;;;  - Motion aids
 ;;;  - Power-ups: Embark and Consult
 ;;;  - Minibuffer and completion
+;;;  - Spell Check
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; global keymap edits
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(keymap-global-set "C-x -" 'split-window-below)
+(keymap-global-set "C-x \\" 'split-window-horizontally)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -45,7 +55,6 @@
   :demand t
   :bind (("C-c j" . avy-goto-line)
          ("s-j"   . avy-goto-char-timer)))
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -192,3 +201,14 @@
   :ensure t
   :config
   (setq completion-styles '(orderless)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Spell Check
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(use-package ispell
+  :config
+  (setq ispell-program-name "/usr/bin/aspell"))

@@ -181,4 +181,5 @@
    '((emacs-lisp . t)
      (python . t)
      (shell . t)))
-  (setq org-src-preserve-indentation t))
+  (setq org-src-preserve-indentation t)
+  (setq org-startup-folded 'fold))
