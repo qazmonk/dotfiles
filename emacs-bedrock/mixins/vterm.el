@@ -21,10 +21,12 @@
 ;; Make sure to install CMake
 
 (use-package vterm
-    :ensure t
-    :bind (:map vterm-mode-map ("C-l" . vterm-send-C-l))
-    :config
-    (setq vterm-shell "/usr/bin/zsh")
-    (set-face-foreground 'vterm-color-yellow "dark orange")
-    (set-face-background 'vterm-color-yellow "orange")
-    (set-face-background 'vterm-color-green "dark green"))
+  :ensure t
+  :demand
+  :bind (:map vterm-mode-map ("C-l" . vterm-send-C-l))
+  :config
+  (setq vterm-shell "/usr/bin/zsh")
+  (set-face-foreground 'vterm-color-yellow "dark orange")
+  (set-face-background 'vterm-color-yellow "orange")
+  (set-face-background 'vterm-color-green "dark green")
+  (setq initial-buffer-choice #'vterm))
