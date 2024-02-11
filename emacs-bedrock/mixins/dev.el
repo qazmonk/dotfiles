@@ -15,11 +15,12 @@
 ;;; Before trying to use a treesit mode.
 
 ;;; Contents:
-;;;
+;;;  
 ;;;  - Built-in config for developers
 ;;;  - Version Control
 ;;;  - Common file types
 ;;;  - Eglot, the built-in LSP client for Emacs
+;;;  - Calc
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -108,3 +109,18 @@
 (use-package pyenv-mode
   :ensure t
   :config (pyenv-mode))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;;   CALC
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(setq math-additional-units '(
+  (bytes "byte" "Bytes")
+  (bits "bit" "Bits")
+  (bps "bit / s" "Bits per second")
+  (byte "8 * bit" "Byte")
+  (bit nil "Bit")
+  ))
+(setq math-units-table nil)
