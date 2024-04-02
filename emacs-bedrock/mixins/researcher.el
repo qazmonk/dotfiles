@@ -27,7 +27,7 @@
 
 ;;; These variables must be set for citar to work properly!
 
-(setq citar-bibliography '("~/refs.bib")) ; paths to your bibtex files
+;; (setq citar-bibliography '("~/refs.bib")) ; paths to your bibtex files
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -35,16 +35,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(use-package citar
-  :ensure t
-  :bind (("C-c b" . citar-insert-citation)
-         :map minibuffer-local-map
-         ("M-b" . citar-insert-preset))
-  :custom
-  ;; Allows you to customize what citar-open does
-  (citar-file-open-functions '(("html" . citar-file-open-external)
-                               ;; ("pdf" . citar-file-open-external)
-                               (t . find-file))))
+;; (use-package citar
+;;   :ensure t
+;;   :bind (("C-c b" . citar-insert-citation)
+;;          :map minibuffer-local-map
+;;          ("M-b" . citar-insert-preset))
+;;   :custom
+;;   ;; Allows you to customize what citar-open does
+;;   (citar-file-open-functions '(("html" . citar-file-open-external)
+;;                                ;; ("pdf" . citar-file-open-external)
+;;                                (t . find-file))))
 
 ;; Optional: if you have the embark package installed, enable the ability to act
 ;; on citations with citar by invoking `embark-act'.
@@ -54,14 +54,14 @@
 ;  :no-require
 ;  :config (citar-embark-mode))
 
-(use-package citar-org-roam
-  :diminish ""
-  ;; To get this to work both citar *and* org-roam have to have been used
-  :after citar org-roam
-  :no-require
-  :config
-  (citar-org-roam-mode)
-  (setq citar-org-roam-note-title-template "${author} - ${title}\n#+filetags: ${tags}"))
+;; (use-package citar-org-roam
+;;   :diminish ""
+;;   ;; To get this to work both citar *and* org-roam have to have been used
+;;   :after citar org-roam
+;;   :no-require
+;;   :config
+;;   (citar-org-roam-mode)
+;;   (setq citar-org-roam-note-title-template "${author} - ${title}\n#+filetags: ${tags}"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
