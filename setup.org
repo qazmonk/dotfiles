@@ -90,9 +90,9 @@ ln -s ~/dotfiles/.p10k.zsh ~/.p10k.zsh
 #+begin_src bash
 curl https://pyenv.run | bash
 #+end_src
-* cmake
+* cmake and make for compiling vterm
 #+begin_src bash
-sudo pacman -Syu cmake
+sudo pacman -Syu cmake make
 #+end_src
 * Setup emacs bedrock
 #+begin_src bash
