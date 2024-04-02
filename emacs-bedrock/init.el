@@ -51,7 +51,7 @@
 (setq display-time-default-load-average nil) ; this information is useless for most
 
 ;; Automatically reread from disk if the underlying file changes
-(setq auto-revert-interval 1)
+(setq auto-revert-interval 10)
 (setq auto-revert-check-vc-info t)
 (global-auto-revert-mode)
 
@@ -79,6 +79,9 @@ If the new path's directories does not exist, create them."
     (make-directory (file-name-directory backupFilePath) (file-name-directory backupFilePath))
     backupFilePath))
 (setq make-backup-file-name-function 'bedrock--backup-file-name)
+
+;; Visual Bell
+(setq visible-bell t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
