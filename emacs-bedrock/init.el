@@ -167,7 +167,7 @@ If the new path's directories does not exist, create them."
 ;; (setq-default tab-width 4)
 
 ;; Misc. UI tweaks
-(blink-cursor-mode -1)                                ; Steady cursor
+(blink-cursor-mode t)                                ; Steady cursor
 (pixel-scroll-precision-mode)                         ; Smooth scrolling
 
 ;; Use common keystrokes by default
@@ -272,7 +272,7 @@ If the new path's directories does not exist, create them."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages '(rg vundo org-roam cape pyenv-mode vterm which-key)))
+ '(package-selected-packages '(winum rg vundo org-roam cape pyenv-mode vterm which-key)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
