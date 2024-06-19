@@ -77,7 +77,7 @@
   :bind (("C-x b" . consult-buffer) ; orig. switch-to-buffer
          ("M-y" . consult-yank-pop) ; orig. yank-pop
          ("C-s" . consult-line)
-	 ("M-SPC" . consult-global-mark))    ; orig. isearch
+	 ("M-SPC" . consult-mark))    ; orig. isearch
   :config
   ;; Narrowing lets you restrict results to certain groups of candidates
   (setq consult-narrow-key "<"))
