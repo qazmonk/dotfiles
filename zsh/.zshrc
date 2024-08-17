@@ -77,7 +77,8 @@ setopt SHARE_HISTORY             # Share history between all sessions.
 
 
 autoload -U compinit; compinit
-
+autoload -U select-word-style
+select-word-style bash
 
 # Load vterm utility functions
 if [[ "$INSIDE_EMACS" = 'vterm' ]] \
