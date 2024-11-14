@@ -102,8 +102,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; If you add a mymacros.sty file to the tex installation you can reference it in all these functions
+(add-hook 'latex-mode-hook 'eglot-ensure)
+(add-hook 'latex-mode-hook 'flyspell-mode)
 
+;; change the way filenames are parsed so that file completion works inside \includegraphics{}
+(defvar latex-thing-at-point-file-name-chars "-@~/[:alnum:]_.$#%,:")
+(add-hook 'latex-mode-hook (lambda () (setq-local thing-at-point-file-name-chars latex-thing-at-point-file-name-chars)))
+
+
+;; Utilities for making image versions of latex equations
+;; If you add a mymacros.sty file to the tex installation you can reference it in all these functions
 (defun latex-eq-to-png (equation output-file)
   (interactive "MEquation: \nFOuput File: ")
   (let ((file (make-temp-file "latext-to-png" nil ".tex")))
