@@ -184,6 +184,7 @@
   (setq org-journal-dir "~/Documents/org-journal/"))
 
 (use-package org
+  :demand t
   :config
   (org-babel-do-load-languages
    'org-babel-load-languages
@@ -191,4 +192,4 @@
      (python . t)
      (shell . t)))
   (setq org-src-preserve-indentation t)
-  (setq org-startup-folded 'fold))
+  (setq org-startup-folded t))
