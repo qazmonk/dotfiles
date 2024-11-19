@@ -12,4 +12,4 @@ eval "$(pyenv init -)"
 # export PNPM_HOME="/home/nate/.local/share/pnpm"
 # export PATH="$PNPM_HOME:$PATH"
 # pnpm end
-. "$HOME/.cargo/env"
+#. "$HOME/.cargo/env"

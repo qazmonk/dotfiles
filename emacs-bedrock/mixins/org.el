@@ -174,6 +174,15 @@
 ;        org-roam-ui-update-on-save t
 ;        org-roam-ui-open-on-start t))
 
+
+(use-package org-journal
+  :ensure t
+  :init
+  ;; Change default prefix key; needs to be set before loading org-journal
+  (setq org-journal-prefix-key "C-c j ")
+  :config
+  (setq org-journal-dir "~/Documents/org-journal/"))
+
 (use-package org
   :config
   (org-babel-do-load-languages
