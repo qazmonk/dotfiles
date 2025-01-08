@@ -66,13 +66,52 @@ make bashrc
 | ln    | -s  | ~/dotfiles/.bashrc.base   | ~/.bashrc |    |      |    |           |                |    |
 
 * setup zsh
+** Create a machine specific env file for variables that are specific to this machine
+- For the villa laptop
+#+begin_src bash
+touch ~/dotfiles/zsh/.zshenv.villa-laptop
+#+end_src
+- For the desktop
+#+begin_src bash
+touch ~/dotfiles/zsh/.zshenv.nate-h7
+#+end_src
 ** Install p10k
 - see https://github.com/romkatv/powerlevel10k#arch-linux
-- but probably just this  
+- but maybe just this if you're on arch
 #+begin_src bash
 sudo pacman -Syu --noconfirm zsh-theme-powerlevel10k
-echo 'source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme' >>~/.zshrc
 #+end_src
+- otherwise just clone the git repo
+#+begin_src bash
+mkdir -p ~/github-src/
+cd ~/github-src
+git clone https://github.com/romkatv/powerlevel10k.git
+#+end_src
+
+- Now we need to set the env variable P10K_THEME_FILE to point to wherever you just installed it. If this machine already has a .zshrc.this-machine file it goes there, otherwise create it. Something like this:
+-- For the villa laptop
+#+begin_src bash
+echo 'export P10K_THEME_FILE=$HOME/github-src/powerlevel10k/powerlevel10k.zsh-theme'
+>>~/dotfiles/zsh/.zshenv.villa-laptop
+#+end_src
+-- For the desktop
+#+begin_src bash
+echo 'export P10K_THEME_FILE=/usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme'
+>>~/dotfiles/zsh/.zshenv.nate-h7
+#+end_src
+#+RESULTS:
+** Link your machine specific env file
+- For the villa laptop
+#+begin_src bash
+ln -s ~/dotfiles/zsh/.zshenv.villa-laptop ~/.zshenv.this-machine
+#+end_src
+- For the desktop
+#+begin_src bash
+ln -s ~/dotfiles/zsh/.zshenv.nate-h7 ~/.zshenv.this-machine
+#+end_src
+
+#+RESULTS:
+** Now link the main zshrc
 #+begin_src bash
 set -x
 if [ -f ~/.zshrc ]; then mv ~/.zshrc ~/.zshrc.old; fi

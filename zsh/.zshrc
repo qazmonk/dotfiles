@@ -16,9 +16,10 @@
 #   source /usr/share/zsh/manjaro-zsh-prompt
 # fi
 
+source ~/.zshenv.this-machine
 # use p10k
 #source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
-source /home/nchodosh/github-src/powerlevel10k/powerlevel10k.zsh-theme
+source $P10K_THEME_FILE #/home/nchodosh/github-src/powerlevel10k/powerlevel10k.zsh-theme
 
 vterm_printf(){
     if [ -n "$TMUX" ] && ([ "${TERM%%-*}" = "tmux" ] || [ "${TERM%%-*}" = "screen" ] ); then
