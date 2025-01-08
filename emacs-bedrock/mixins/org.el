@@ -162,7 +162,10 @@
                  (display-buffer-in-side-window)
                  (side . right)
                  (window-width . 0.4)
-                 (window-height . fit-window-to-buffer))))
+                 (window-height . fit-window-to-buffer)))
+  ;; Use org roam files for agenda
+  (push  (file-name-concat (getenv "HOME") "Documents/org-roam/daily/") org-agenda-files))
+
 
 ;; Pretty web interface for org-roam
 ;(use-package org-roam-ui
