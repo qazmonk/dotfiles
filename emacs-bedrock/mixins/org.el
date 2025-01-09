@@ -145,7 +145,7 @@
               (todo)))
             ("w" "Work" agenda ""
              ((org-agenda-files '("work.org"))))))
-
+    (setq org-agenda-files nil)
     ;; if you've set up syncing with your phone add it to the agenda
     (when (f-directory-p (f-full "~/Documents/org-mobile/"))
       (push (f-full "~/Documents/org-mobile/") org-agenda-files)))
