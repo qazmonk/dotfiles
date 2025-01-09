@@ -75,6 +75,9 @@ touch ~/dotfiles/zsh/.zshenv.villa-laptop
 #+begin_src bash
 touch ~/dotfiles/zsh/.zshenv.nate-h7
 #+end_src
+
+#+RESULTS:
+
 ** Install p10k
 - see https://github.com/romkatv/powerlevel10k#arch-linux
 - but maybe just this if you're on arch
@@ -96,8 +99,7 @@ echo 'export P10K_THEME_FILE=$HOME/github-src/powerlevel10k/powerlevel10k.zsh-th
 #+end_src
 -- For the desktop
 #+begin_src bash
-echo 'export P10K_THEME_FILE=/usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme'
->>~/dotfiles/zsh/.zshenv.nate-h7
+echo 'export P10K_THEME_FILE=/usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme'>>~/dotfiles/zsh/.zshenv.nate-h7
 #+end_src
 #+RESULTS:
 ** Link your machine specific env file
