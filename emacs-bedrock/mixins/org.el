@@ -148,7 +148,10 @@
     (setq org-agenda-files nil)
     ;; if you've set up syncing with your phone add it to the agenda
     (when (f-directory-p (f-full "~/Documents/org-mobile/"))
-      (push (f-full "~/Documents/org-mobile/") org-agenda-files)))
+      (push (f-full "~/Documents/org-mobile/") org-agenda-files))
+    ;; if you have a running schedule
+    (when (f-directory-p (f-full "~/Documents/org-run/"))
+      (push (f-full "~/Documents/org-run/") org-agenda-files)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

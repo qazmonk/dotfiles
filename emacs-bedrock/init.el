@@ -83,6 +83,10 @@ If the new path's directories does not exist, create them."
 ;; Visual Bell
 (setq visible-bell t)
 
+
+;; split windows correctly even on modern displays
+(setq split-width-threshold 240)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;;   Get correct environement variables
