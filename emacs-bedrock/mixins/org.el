@@ -44,7 +44,7 @@
 (setq org-directory "~/Documents/org/") ; Non-absolute paths for agenda and
                                         ; capture templates will look here.
 
-(setq org-agenda-files '("inbox.org" "work.org"))
+;;(setq org-agenda-files '("inbox.org" "work.org"))
 
 ;; Default tags
 (setq org-tag-alist '(
@@ -151,7 +151,10 @@
       (push (f-full "~/Documents/org-mobile/") org-agenda-files))
     ;; if you have a running schedule
     (when (f-directory-p (f-full "~/Documents/org-run/"))
-      (push (f-full "~/Documents/org-run/") org-agenda-files)))
+      (push (f-full "~/Documents/org-run/") org-agenda-files))
+    ;; auto save buffers after updating a TODO in agenda view
+    (advice-add 'org-agenda-todo :after #'org-save-all-org-buffers)
+    )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
