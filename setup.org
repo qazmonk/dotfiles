@@ -1,4 +1,5 @@
-Make it possible to eval src blocks with bash
+Make it possible to eval src blocks with bash. Run this if the bedrock
+hasn't been set up yet
 #+begin_src emacs-lisp
 (org-babel-do-load-languages 'org-babel-load-languages '((emacs-lisp . t) (shell . t)))
 #+end_src
@@ -45,7 +46,7 @@ Make it possible to eval src blocks with bash
   | chmod | a+x | ~/dotfiles/bin/setup_dbus_address       |                                     |
   | ln    | -sf | ~/dotfiles/cmds/sbclcompile.sh          | ~/dotfiles/bin/sbclcompile          |
   | chmod | a+x | ~/dotfiles/bin/sbclcompile              |                                     |
-** DONE Link init.el to .emacs
+** Link init.el to .emacs
   #+BEGIN_SRC shell
     make emacs-config
   #+END_SRC
@@ -75,9 +76,7 @@ touch ~/dotfiles/zsh/.zshenv.villa-laptop
 #+begin_src bash
 touch ~/dotfiles/zsh/.zshenv.nate-h7
 #+end_src
-
 #+RESULTS:
-
 ** Install p10k
 - see https://github.com/romkatv/powerlevel10k#arch-linux
 - but maybe just this if you're on arch
