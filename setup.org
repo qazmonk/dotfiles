@@ -162,3 +162,7 @@ cp ~/dotfiles/systemd/* ~/.config/systemd/user
 systemctl --user enable --now restic-backup.timer
 systemctl --user enable --now restic-prune.timer
 #+end_src
+** Restore Documents
+#+begin_src bash
+restic -r s3:s3.us-east-005.backblazeb2.com/chodosh-backup-testing restore latest:/home/nate --target 
+#+end_src
