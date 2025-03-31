@@ -1,0 +1,10 @@
+[Unit]
+Description=Restic Forget & Prune Timer
+
+[Timer]
+OnCalendar=*-*-1/10 00:00:00
+Persistent=true
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target

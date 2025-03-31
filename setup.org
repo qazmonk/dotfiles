@@ -145,3 +145,20 @@ ln -s ~/dotfiles/emacs-bedrock/mixins ~/.emacs.d/mixins
 #+end_src
 
 #+RESULTS:
+* Setup ~/Documents backup
+** Decrypt the password file
+#+begin_src bash
+gpg -d backup-passwords.env.gpg -o backup-passwords.env
+#+end_src
+** Copy the service files
+#+begin_src bash
+mkdir -p ~/.config/systemd/user
+cp ~/dotfiles/systemd/* ~/.config/systemd/user
+#+end_src
+
+#+RESULTS:
+** Enable timers
+#+begin_src bash
+systemctl --user enable --now restic-backup.timer
+systemctl --user enable --now restic-prune.timer
+#+end_src

@@ -124,3 +124,14 @@
   (bit nil "Bit")
   ))
 (setq math-units-table nil)
+
+
+;;;;;;;;;;;;;;;;;;;;
+;;;
+;;;   Unix conf
+;;;
+;;;;;;;;;;;;;;;;;;;;
+
+(use-package conf-mode
+  :mode "\\.service\\'"
+  :mode "\\.timer\\'")
