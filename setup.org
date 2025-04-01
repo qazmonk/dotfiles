@@ -1,5 +1,5 @@
 Make it possible to eval src blocks with bash. Run this if the bedrock
-hasn't been set up yet
+hasn't been set up yet.
 #+begin_src emacs-lisp
 (org-babel-do-load-languages 'org-babel-load-languages '((emacs-lisp . t) (shell . t)))
 #+end_src
@@ -154,7 +154,6 @@ gpg -d backup-passwords.env.gpg -o backup-passwords.env
 mkdir -p ~/.config/systemd/user
 cp ~/dotfiles/systemd/* ~/.config/systemd/user
 #+end_src
-
 #+RESULTS:
 ** Enable timers
 #+begin_src bash
