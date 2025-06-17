@@ -1,4 +1,5 @@
-Make it possible to eval src blocks with bash
+Make it possible to eval src blocks with bash. Run this if the bedrock
+hasn't been set up yet.
 #+begin_src emacs-lisp
 (org-babel-do-load-languages 'org-babel-load-languages '((emacs-lisp . t) (shell . t)))
 #+end_src
@@ -45,7 +46,7 @@ Make it possible to eval src blocks with bash
   | chmod | a+x | ~/dotfiles/bin/setup_dbus_address       |                                     |
   | ln    | -sf | ~/dotfiles/cmds/sbclcompile.sh          | ~/dotfiles/bin/sbclcompile          |
   | chmod | a+x | ~/dotfiles/bin/sbclcompile              |                                     |
-** DONE Link init.el to .emacs
+** Link init.el to .emacs
   #+BEGIN_SRC shell
     make emacs-config
   #+END_SRC
@@ -75,9 +76,7 @@ touch ~/dotfiles/zsh/.zshenv.villa-laptop
 #+begin_src bash
 touch ~/dotfiles/zsh/.zshenv.nate-h7
 #+end_src
-
 #+RESULTS:
-
 ** Install p10k
 - see https://github.com/romkatv/powerlevel10k#arch-linux
 - but maybe just this if you're on arch
@@ -145,3 +144,23 @@ ln -s ~/dotfiles/emacs-bedrock/mixins ~/.emacs.d/mixins
 #+end_src
 
 #+RESULTS:
+* Setup ~/Documents backup
+** Decrypt the password file
+#+begin_src bash
+gpg -d backup-passwords.env.gpg -o backup-passwords.env
+#+end_src
+** Copy the service files
+#+begin_src bash
+mkdir -p ~/.config/systemd/user
+cp ~/dotfiles/systemd/* ~/.config/systemd/user
+#+end_src
+#+RESULTS:
+** Enable timers
+#+begin_src bash
+systemctl --user enable --now restic-backup.timer
+systemctl --user enable --now restic-prune.timer
+#+end_src
+** Restore Documents
+#+begin_src bash
+restic -r s3:s3.us-east-005.backblazeb2.com/chodosh-backup-testing restore latest:/home/nate --target 
+#+end_src

@@ -1,0 +1,14 @@
+[Unit]
+Description=Restic Backup Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/dotfiles/backup-passwords.env
+ExecStart=/usr/bin/restic -r s3:s3.us-east-005.backblazeb2.com/chodosh-backup-testing --verbose backup %h/Documents
+Nice=10
+IOSchedulingClass=best-effort
+
+[Install]
+WantedBy=multi-user.target

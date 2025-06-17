@@ -82,6 +82,8 @@ autoload -U compinit; compinit
 autoload -U select-word-style
 select-word-style bash
 
+alias ls "ls -lah"
+
 # Load vterm utility functions
 if [[ "$INSIDE_EMACS" = 'vterm' ]] \
     && [[ -n ${EMACS_VTERM_PATH} ]] \

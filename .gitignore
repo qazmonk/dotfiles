@@ -27,3 +27,6 @@
 !emacs-old-config/*
 !emacs-bedrock
 !emacs-old-config
+!*.gpg
+!systemd
+!systemd/*
