@@ -29,4 +29,6 @@
   (set-face-foreground 'vterm-color-yellow "dark orange")
   (set-face-background 'vterm-color-yellow "orange")
   (set-face-background 'vterm-color-green "dark green")
+  (set-face-foreground 'vterm-color-black "gainsboro")
+  (set-face-background 'vterm-color-black "dim gray")
   (setq initial-buffer-choice #'vterm))
