@@ -106,9 +106,9 @@
 ;;;   PYENV, manage python installs
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(use-package pyenv-mode
-  :ensure t
-  :config (pyenv-mode))
+;; (use-package pyenv-mode
+;;   :ensure t
+;;   :config (pyenv-mode))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -83,6 +83,8 @@
 (setq org-link-abbrev-alist
       '(("family_search" . "https://www.familysearch.org/tree/person/details/%s")))
 
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;;   Phase 1: editing and exporting files
@@ -104,7 +106,29 @@
   (setf (cdr (assoc 'file org-link-frame-setup)) 'find-file)
 
   ;; Make exporting quotes better
-  (setq org-export-with-smart-quotes t))
+  (setq org-export-with-smart-quotes t)
+
+  ;; Adding support for embedding html pages in iframes
+  (org-link-set-parameters
+   "iframe"
+   :follow (lambda (path _) (browse-url path))
+   :export (lambda (path desc backend _)
+             (when (eq backend 'html)
+               (let* ((parts (split-string path "::"))
+                      (file (car parts))
+                      (params (cdr parts))
+                      (height (or (cadr (assoc "height" (mapcar (lambda (p) (split-string p "=")) params))) "600px"))
+                      (width (or (cadr (assoc "width" (mapcar (lambda (p) (split-string p "=")) params))) "100%")))
+		 (format "<iframe src=\"%s\" width=\"%s\" height=\"%s\" style=\"border: none;\"></iframe>" 
+			 file width height)))))
+
+  (defun org-iframe-complete-link ()
+    "Provide completion for iframe links."
+    (concat "iframe:" (read-file-name "HTML file: " nil nil t)))
+
+  (org-link-set-parameters "iframe" :complete #'org-iframe-complete-link))
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
