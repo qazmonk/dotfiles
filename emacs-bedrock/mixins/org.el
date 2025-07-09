@@ -128,6 +128,19 @@
 
   (org-link-set-parameters "iframe" :complete #'org-iframe-complete-link)
 
+  ;; use prism for syntax highlighting
+  (setq org-html-htmlize-output-type nil)
+  (defun my-org-html-src-block-filter (text backend info)
+    "Add language-* class to source blocks for Prism.js highlighting."
+    (when (eq backend 'html)
+      (replace-regexp-in-string
+       "<pre class=\"src src-\\([^\"]*\\)\""
+       "<pre class=\"src src-\\1 language-\\1\""
+       text)))
+
+  (add-to-list 'org-export-filter-src-block-functions
+               'my-org-html-src-block-filter)
+
   (defun my/org-babel-dumb-ctrl-c-ctrl-c-hook ()
     "Custom C-c C-c behavior for dumb copy/paste sending of org-babel blocks with no output handling."
     ;; add the :dumb tag to a bash session block to enable this mode
@@ -135,12 +148,12 @@
       (let* ((info (org-babel-get-src-block-info))
              (params (nth 2 info))
              (session (cdr (assoc :session params)))
-             (dumb-send (assoc :dumb params)))
-	;; Only handle session blocks with :direct yes
+             (dumb-send (cdr (assoc :dumb params))))
+	;; Only handle session blocks with :dumb true
 	(when (and session 
                    (not (string= session "none"))
-                   dumb-send)
-          (let ((body (nth 1 info))
+                   (string= dumb-send "true"))
+	  (let ((body (nth 1 info))
 		(session-buffer  (org-babel-sh-initiate-session session params)))
             ;; Send the code directly to the session
             (with-current-buffer session-buffer
@@ -150,8 +163,11 @@
             ;; Switch to the session buffer
             (switch-to-buffer-other-window session-buffer)
             ;; Return t to indicate we handled it
-            t)))))
-  (add-hook 'org-ctrl-c-ctrl-c-hook #'my/org-babel-dumb-ctrl-c-ctrl-c-hook))
+            t))
+        ))))
+(add-hook 'org-ctrl-c-ctrl-c-hook #'my/org-babel-dumb-ctrl-c-ctrl-c-hook)
+
+)
 
 
 
