@@ -126,7 +126,32 @@
     "Provide completion for iframe links."
     (concat "iframe:" (read-file-name "HTML file: " nil nil t)))
 
-  (org-link-set-parameters "iframe" :complete #'org-iframe-complete-link))
+  (org-link-set-parameters "iframe" :complete #'org-iframe-complete-link)
+
+  (defun my/org-babel-dumb-ctrl-c-ctrl-c-hook ()
+    "Custom C-c C-c behavior for dumb copy/paste sending of org-babel blocks with no output handling."
+    ;; add the :dumb tag to a bash session block to enable this mode
+    (when (org-in-src-block-p)
+      (let* ((info (org-babel-get-src-block-info))
+             (params (nth 2 info))
+             (session (cdr (assoc :session params)))
+             (dumb-send (assoc :dumb params)))
+	;; Only handle session blocks with :direct yes
+	(when (and session 
+                   (not (string= session "none"))
+                   dumb-send)
+          (let ((body (nth 1 info))
+		(session-buffer  (org-babel-sh-initiate-session session params)))
+            ;; Send the code directly to the session
+            (with-current-buffer session-buffer
+              (goto-char (point-max))
+              (insert body)
+              (comint-send-input))
+            ;; Switch to the session buffer
+            (switch-to-buffer-other-window session-buffer)
+            ;; Return t to indicate we handled it
+            t)))))
+  (add-hook 'org-ctrl-c-ctrl-c-hook #'my/org-babel-dumb-ctrl-c-ctrl-c-hook))
 
 
 
