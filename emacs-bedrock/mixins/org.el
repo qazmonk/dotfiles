@@ -126,8 +126,10 @@
     "Provide completion for iframe links."
     (concat "iframe:" (read-file-name "HTML file: " nil nil t)))
 
-  (org-link-set-parameters "iframe" :complete #'org-iframe-complete-link)
+  (org-link-set-parameters "iframe" :complete #'org-iframe-complete-link))
 
+(use-package ox
+  :config
   ;; use prism for syntax highlighting
   (setq org-html-htmlize-output-type nil)
   (defun my-org-html-src-block-filter (text backend info)
@@ -164,10 +166,9 @@
             (switch-to-buffer-other-window session-buffer)
             ;; Return t to indicate we handled it
             t))
-        ))))
-(add-hook 'org-ctrl-c-ctrl-c-hook #'my/org-babel-dumb-ctrl-c-ctrl-c-hook)
-
-)
+        )))
+  (add-hook 'org-ctrl-c-ctrl-c-hook #'my/org-babel-dumb-ctrl-c-ctrl-c-hook))
+  
 
 
 
