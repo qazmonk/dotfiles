@@ -83,6 +83,8 @@
 (setq org-link-abbrev-alist
       '(("family_search" . "https://www.familysearch.org/tree/person/details/%s")))
 
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;;   Phase 1: editing and exporting files
@@ -104,7 +106,71 @@
   (setf (cdr (assoc 'file org-link-frame-setup)) 'find-file)
 
   ;; Make exporting quotes better
-  (setq org-export-with-smart-quotes t))
+  (setq org-export-with-smart-quotes t)
+
+  ;; Adding support for embedding html pages in iframes
+  (org-link-set-parameters
+   "iframe"
+   :follow (lambda (path _) (browse-url path))
+   :export (lambda (path desc backend _)
+             (when (eq backend 'html)
+               (let* ((parts (split-string path "::"))
+                      (file (car parts))
+                      (params (cdr parts))
+                      (height (or (cadr (assoc "height" (mapcar (lambda (p) (split-string p "=")) params))) "600px"))
+                      (width (or (cadr (assoc "width" (mapcar (lambda (p) (split-string p "=")) params))) "100%")))
+		 (format "<iframe src=\"%s\" width=\"%s\" height=\"%s\" style=\"border: none;\"></iframe>" 
+			 file width height)))))
+
+  (defun org-iframe-complete-link ()
+    "Provide completion for iframe links."
+    (concat "iframe:" (read-file-name "HTML file: " nil nil t)))
+
+  (org-link-set-parameters "iframe" :complete #'org-iframe-complete-link))
+
+(use-package ox
+  :config
+  ;; use prism for syntax highlighting
+  (setq org-html-htmlize-output-type nil)
+  (defun my-org-html-src-block-filter (text backend info)
+    "Add language-* class to source blocks for Prism.js highlighting."
+    (when (eq backend 'html)
+      (replace-regexp-in-string
+       "<pre class=\"src src-\\([^\"]*\\)\""
+       "<pre class=\"src src-\\1 language-\\1\""
+       text)))
+
+  (add-to-list 'org-export-filter-src-block-functions
+               'my-org-html-src-block-filter)
+
+  (defun my/org-babel-dumb-ctrl-c-ctrl-c-hook ()
+    "Custom C-c C-c behavior for dumb copy/paste sending of org-babel blocks with no output handling."
+    ;; add the :dumb tag to a bash session block to enable this mode
+    (when (org-in-src-block-p)
+      (let* ((info (org-babel-get-src-block-info))
+             (params (nth 2 info))
+             (session (cdr (assoc :session params)))
+             (dumb-send (cdr (assoc :dumb params))))
+	;; Only handle session blocks with :dumb true
+	(when (and session 
+                   (not (string= session "none"))
+                   (string= dumb-send "true"))
+	  (let ((body (nth 1 info))
+		(session-buffer  (org-babel-sh-initiate-session session params)))
+            ;; Send the code directly to the session
+            (with-current-buffer session-buffer
+              (goto-char (point-max))
+              (insert body)
+              (comint-send-input))
+            ;; Switch to the session buffer
+            (switch-to-buffer-other-window session-buffer)
+            ;; Return t to indicate we handled it
+            t))
+        )))
+  (add-hook 'org-ctrl-c-ctrl-c-hook #'my/org-babel-dumb-ctrl-c-ctrl-c-hook))
+  
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
