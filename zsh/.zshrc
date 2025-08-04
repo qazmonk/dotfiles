@@ -15,6 +15,46 @@
 # if [[ -e /usr/share/zsh/manjaro-zsh-prompt ]]; then
 #   source /usr/share/zsh/manjaro-zsh-prompt
 # fi
+# Detect org-babel/emacs sessions and skip complex setup
+if [[ "$INSIDE_EMACS" = *comint* ]] || [[ "$TERM" = "dumb" ]]; then
+    # Disable P10k configuration wizard warning
+    export POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true
+    
+    # Load machine-specific environment
+    source ~/.zshenv.this-machine
+    
+    export CONDA_CHANGEPS1=false
+    # Keep conda initialization
+    __conda_setup="$('/home/nchodosh/miniforge3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+    if [ $? -eq 0 ]; then
+        eval "$__conda_setup"
+    else
+        if [ -f "/home/nchodosh/miniforge3/etc/profile.d/conda.sh" ]; then
+            . "/home/nchodosh/miniforge3/etc/profile.d/conda.sh"
+        else
+            export PATH="/home/nchodosh/miniforge3/bin:$PATH"
+        fi
+    fi
+    unset __conda_setup
+    
+    # Keep essential settings
+    autoload -U compinit; compinit
+    autoload -U select-word-style
+    select-word-style bash
+    alias ls="ls -lah"
+    
+    # Basic history settings
+    export HISTFILE=~/.history
+    export HISTSIZE=5000000
+    export SAVEHIST=$HISTSIZE
+    setopt SHARE_HISTORY
+    setopt HIST_IGNORE_DUPS
+    
+    # Let org-babel handle the prompt - don't fight it
+    # Skip the rest of the complex setup
+    return 0
+fi
+
 
 source ~/.zshenv.this-machine
 # use p10k
@@ -97,4 +137,20 @@ fi
 # export PYENV_ROOT="$HOME/.pyenv"
 # [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
 # eval "$(pyenv init -)"
+
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/home/nchodosh/miniforge3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/nchodosh/miniforge3/etc/profile.d/conda.sh" ]; then
+        . "/home/nchodosh/miniforge3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/nchodosh/miniforge3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
 

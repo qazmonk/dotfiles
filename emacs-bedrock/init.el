@@ -87,6 +87,11 @@ If the new path's directories does not exist, create them."
 ;; split windows correctly even on modern displays
 (setq split-width-threshold 240)
 
+;; make sure f is available
+(use-package f
+  :ensure t
+  :demand t)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;;   Get correct environement variables
@@ -277,7 +282,7 @@ If the new path's directories does not exist, create them."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(winum rg vundo cape eat htmlize org-roam pyenv-mode rg vterm vundo which-key winum))
+   '(f f3 winum rg vundo cape eat htmlize org-roam pyenv-mode rg vterm vundo which-key winum))
  '(safe-local-variable-values
    '((eval setq-local org-export-with-sub-superscripts nil)
      (org-export-html-head-extra . ""))))
