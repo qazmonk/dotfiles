@@ -81,7 +81,6 @@ git config --global user.name "Nate Chodosh"
 git config --global user.email "nchodosh@gmail.com"
 git -C ~/dotfiles remote set-url origin git@github.qazmonk:qazmonk/dotfiles.git
 #+end_src
-
 * Setup bash + starship
 ** Set bash as default shell
 Run this in a terminal (not org-babel — needs interactive password):
@@ -106,11 +105,7 @@ ln -s ~/dotfiles/starship.toml ~/.config/starship.toml
 touch ~/.bashrc.local
 #+end_src
 Put machine-specific settings here (conda paths, extra aliases, etc).
-* pyenv
-#+begin_src bash
-curl https://pyenv.run | bash
-#+end_src
-* cmake and make for compiling vterm
+* tools for compiling vterm
 #+begin_src bash
 sudo dnf install cmake libtool
 #+end_src
@@ -136,7 +131,7 @@ gpg -d backup-passwords.env.gpg -o backup-passwords.env
 ** Copy the service files
 #+begin_src bash
 mkdir -p ~/.config/systemd/user
-cp ~/dotfiles/systemd/* ~/.config/systemd/user
+cp -r ~/dotfiles/systemd/* ~/.config/systemd/user
 #+end_src
 #+RESULTS:
 ** Enable timers
@@ -162,13 +157,18 @@ mkdir -p ~/.config/systemd/user/emacs.service.d
 cp ~/dotfiles/systemd/emacs.service.d/override.conf ~/.config/systemd/user/emacs.service.d/override.conf
 systemctl --user enable --now emacs
 #+end_src
+
+#+RESULTS:
+
 * Setup syncthing
 #+begin_src bash
 systemctl --user enable --now syncthing
 #+end_src
 - Then open http://localhost:8384 to configure folders and devices
+  - org-roam should go to ~/Documents/org-roam/daily/
+  - org-run should go to ~/Documents/org-run/
 * Setup tailscale
 #+begin_src bash
 sudo systemctl enable --now tailscaled
-tailscale up
+sudo tailscale up
 #+end_src
