@@ -110,6 +110,17 @@
 ;;   :ensure t
 ;;   :config (pyenv-mode))
 
+;;;;;;;;;;
+;; conda
+;;;;;;;;;;
+
+(use-package conda
+  :ensure t
+  :init
+  (setq conda-anaconda-home (expand-file-name "~/miniconda3"))
+  (setq conda-env-home-directory (expand-file-name "~/miniconda3/envs"))
+  :config
+  (conda-env-initialize-interactive-shells))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -135,3 +146,36 @@
 (use-package conf-mode
   :mode "\\.service\\'"
   :mode "\\.timer\\'")
+
+;;;;;;;;;;;;;;;;;;
+;;; TRAMP
+;;;;;;;;;;;;;;;;
+
+
+;; A utility function for killing all tramp buffers
+(defun kill-all-tramp-buffers ()
+  "Kill all TRAMP buffers, including unreachable ones."
+  (interactive)
+  (let ((tramp-buffers (seq-filter (lambda (buf)
+                                     (with-current-buffer buf
+                                       (and (stringp default-directory)
+                                            (file-remote-p default-directory))))
+                                   (buffer-list))))
+    (if tramp-buffers
+        (progn
+          ;; Temporarily disable TRAMP cleanup to avoid hanging
+          (let ((tramp-cleanup-connection nil)
+                (tramp-cleanup-all-connections nil))
+            (dolist (buf tramp-buffers)
+              ;; Kill buffer without running hooks that might try to access remote
+              (with-current-buffer buf
+                (set-buffer-modified-p nil)  ; Avoid save prompts
+                (kill-buffer-hook nil))      ; Skip hooks
+              (kill-buffer buf)))
+          ;; Clean up TRAMP connections after killing buffers
+          (when (fboundp 'tramp-cleanup-all-connections)
+            (ignore-errors (tramp-cleanup-all-connections)))
+          (message "Killed %d TRAMP buffer%s" 
+                   (length tramp-buffers)
+                   (if (= 1 (length tramp-buffers)) "" "s")))
+      (message "No TRAMP buffers found"))))

@@ -270,6 +270,9 @@ If the new path's directories does not exist, create them."
 ;; Better UNIX terminal 
 (load-file (expand-file-name "mixins/vterm.el" user-emacs-directory))
 
+;; AI, spooky
+(load-file (expand-file-name "mixins/llms.el" user-emacs-directory))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;;   Built-in customization framework
@@ -282,7 +285,7 @@ If the new path's directories does not exist, create them."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(f f3 winum rg vundo cape eat htmlize org-roam pyenv-mode rg vterm vundo which-key winum))
+   '(f f3 winum rg vundo  cape conda eat gptel htmlize llm-refactoring org-roam pyenv-mode rg vterm vundo which-key winum))
  '(safe-local-variable-values
    '((eval setq-local org-export-with-sub-superscripts nil)
      (org-export-html-head-extra . ""))))

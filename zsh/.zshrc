@@ -122,7 +122,25 @@ autoload -U compinit; compinit
 autoload -U select-word-style
 select-word-style bash
 
-alias ls "ls -lah"
+# Enable colors for ls
+export CLICOLOR=1
+export LSCOLORS=GxFxCxDxBxegedabagaced
+
+# Colorized ls aliases
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux (GNU coreutils)
+    alias ls='ls --color=auto'
+    alias ll='ls --color=auto -lah'
+    alias la='ls --color=auto -la'
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    alias ls='ls -G -lah'
+    alias ll='ls -G -l'
+    alias la='ls -G -la'
+else
+    # Fallback
+    alias ls='ls -lah'
+fi
 
 # Load vterm utility functions
 if [[ "$INSIDE_EMACS" = 'vterm' ]] \
@@ -139,18 +157,4 @@ fi
 # eval "$(pyenv init -)"
 
 
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/home/nchodosh/miniforge3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "/home/nchodosh/miniforge3/etc/profile.d/conda.sh" ]; then
-        . "/home/nchodosh/miniforge3/etc/profile.d/conda.sh"
-    else
-        export PATH="/home/nchodosh/miniforge3/bin:$PATH"
-    fi
-fi
-unset __conda_setup
-# <<< conda initialize <<<
 

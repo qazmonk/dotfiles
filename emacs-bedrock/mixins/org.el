@@ -108,41 +108,6 @@
   ;; Make exporting quotes better
   (setq org-export-with-smart-quotes t)
 
-  ;; Adding support for embedding html pages in iframes
-  (org-link-set-parameters
-   "iframe"
-   :follow (lambda (path _) (browse-url path))
-   :export (lambda (path desc backend _)
-             (when (eq backend 'html)
-               (let* ((parts (split-string path "::"))
-                      (file (car parts))
-                      (params (cdr parts))
-                      (height (or (cadr (assoc "height" (mapcar (lambda (p) (split-string p "=")) params))) "600px"))
-                      (width (or (cadr (assoc "width" (mapcar (lambda (p) (split-string p "=")) params))) "100%")))
-		 (format "<iframe src=\"%s\" width=\"%s\" height=\"%s\" style=\"border: none;\"></iframe>" 
-			 file width height)))))
-
-  (defun org-iframe-complete-link ()
-    "Provide completion for iframe links."
-    (concat "iframe:" (read-file-name "HTML file: " nil nil t)))
-
-  (org-link-set-parameters "iframe" :complete #'org-iframe-complete-link))
-
-(use-package ox
-  :config
-  ;; use prism for syntax highlighting
-  (setq org-html-htmlize-output-type nil)
-  (defun my-org-html-src-block-filter (text backend info)
-    "Add language-* class to source blocks for Prism.js highlighting."
-    (when (eq backend 'html)
-      (replace-regexp-in-string
-       "<pre class=\"src src-\\([^\"]*\\)\""
-       "<pre class=\"src src-\\1 language-\\1\""
-       text)))
-
-  (add-to-list 'org-export-filter-src-block-functions
-               'my-org-html-src-block-filter)
-
   (defun my/org-babel-dumb-ctrl-c-ctrl-c-hook ()
     "Custom C-c C-c behavior for dumb copy/paste sending of org-babel blocks with no output handling."
     ;; add the :dumb tag to a bash session block to enable this mode
@@ -165,16 +130,15 @@
             ;; Switch to the session buffer
             (switch-to-buffer-other-window session-buffer)
             ;; Return t to indicate we handled it
-            t))
-        )))
+            t)))))
   (add-hook 'org-ctrl-c-ctrl-c-hook #'my/org-babel-dumb-ctrl-c-ctrl-c-hook))
-  
 
-
+;; Extend html export
+(load-file (expand-file-name "mixins/ox-html-export.el" user-emacs-directory))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;;   Phase 2: todos, agenda generation, and task tracking
+;;;   phase 2: todos, agenda generation, and task tracking
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
