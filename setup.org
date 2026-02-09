@@ -75,6 +75,13 @@ make bashrc
 | if    | [   | -f                        | ~/.bashrc | ]; | then | mv | ~/.bashrc | ~/.bashrc.old; | fi |
 | ln    | -s  | ~/dotfiles/.bashrc.base   | ~/.bashrc |    |      |    |           |                |    |
 
+* Git config
+#+begin_src bash
+git config --global user.name "Nate Chodosh"
+git config --global user.email "nchodosh@gmail.com"
+git -C ~/dotfiles remote set-url origin git@github.qazmonk:qazmonk/dotfiles.git
+#+end_src
+
 * Setup bash + starship
 ** Set bash as default shell
 Run this in a terminal (not org-babel — needs interactive password):
