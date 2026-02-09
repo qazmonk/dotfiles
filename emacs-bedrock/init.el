@@ -40,9 +40,9 @@
   (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t))
 
 ;; Use correct shell
-(setq explicit-shell-file-name "/bin/zsh")
-(setq shell-file-name "zsh")
-(setq explicit-zsh-args '("--interactive" "--login"))
+(setq explicit-shell-file-name "/bin/bash")
+(setq shell-file-name "bash")
+(setq explicit-bash-args '("--login"))
 
 ;; If you want to turn off the welcome screen, uncomment this
 ;(setq inhibit-splash-screen t)
@@ -284,8 +284,7 @@ If the new path's directories does not exist, create them."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(f f3 winum rg vundo  cape conda eat gptel htmlize llm-refactoring org-roam pyenv-mode rg vterm vundo which-key winum))
+ '(package-selected-packages nil)
  '(safe-local-variable-values
    '((eval setq-local org-export-with-sub-superscripts nil)
      (org-export-html-head-extra . ""))))

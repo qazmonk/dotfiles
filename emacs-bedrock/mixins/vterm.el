@@ -8,7 +8,7 @@
 
 ;;; Contents:
 ;;;
-;;;  - Setup for running vterm with zsh
+;;;  - Setup for running vterm with bash
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -25,7 +25,7 @@
   :demand
   :bind (:map vterm-mode-map ("C-l" . vterm-send-C-l))
   :config
-  (setq vterm-shell "/usr/bin/zsh")
+  (setq vterm-shell "/usr/bin/bash")
   (set-face-foreground 'vterm-color-yellow "dark orange")
   (set-face-background 'vterm-color-yellow "orange")
   (set-face-background 'vterm-color-green "dark green")

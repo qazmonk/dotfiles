@@ -1,8 +1,17 @@
+* Always do first
 Make it possible to eval src blocks with bash. Run this if the bedrock
 hasn't been set up yet.
 #+begin_src emacs-lisp
 (org-babel-do-load-languages 'org-babel-load-languages '((emacs-lisp . t) (shell . t)))
 #+end_src
+#+RESULTS:
+
+* TODO Write an elisp command to send org src blocks to a running vterm
+buffer instead of evaluating via org-babel. This would handle multi-line
+commands, interactive prompts (sudo, etc.), and persistent shell state.
+For now, copy-paste blocks into a terminal.
+
+
 * Old setup stuff
 ** Make bin directory for scripts
   #+BEGIN_SRC shell
@@ -66,73 +75,37 @@ make bashrc
 | if    | [   | -f                        | ~/.bashrc | ]; | then | mv | ~/.bashrc | ~/.bashrc.old; | fi |
 | ln    | -s  | ~/dotfiles/.bashrc.base   | ~/.bashrc |    |      |    |           |                |    |
 
-* setup zsh
-** Create a machine specific env file for variables that are specific to this machine
-- For the villa laptop
+* Setup bash + starship
+** Set bash as default shell
+Run this in a terminal (not org-babel — needs interactive password):
+: chsh -s /bin/bash
+** Install starship
 #+begin_src bash
-touch ~/dotfiles/zsh/.zshenv.villa-laptop
+curl -sS https://starship.rs/install.sh | sh
 #+end_src
-- For the desktop
+** Link .bashrc
+Back up existing .bashrc, then symlink ours:
 #+begin_src bash
-touch ~/dotfiles/zsh/.zshenv.nate-h7
+if [ -f ~/.bashrc ]; then mv ~/.bashrc ~/.bashrc.old; fi
+ln -s ~/dotfiles/.bashrc.base ~/.bashrc
 #+end_src
-#+RESULTS:
-** Install p10k
-- see https://github.com/romkatv/powerlevel10k#arch-linux
-- but maybe just this if you're on arch
+** Link starship.toml
 #+begin_src bash
-sudo pacman -Syu --noconfirm zsh-theme-powerlevel10k
+mkdir -p ~/.config
+ln -s ~/dotfiles/starship.toml ~/.config/starship.toml
 #+end_src
-- otherwise just clone the git repo
+** Create .bashrc.local for machine-specific config
 #+begin_src bash
-mkdir -p ~/github-src/
-cd ~/github-src
-git clone https://github.com/romkatv/powerlevel10k.git
+touch ~/.bashrc.local
 #+end_src
-
-- Now we need to set the env variable P10K_THEME_FILE to point to wherever you just installed it. If this machine already has a .zshrc.this-machine file it goes there, otherwise create it. Something like this:
--- For the villa laptop
-#+begin_src bash
-echo 'export P10K_THEME_FILE=$HOME/github-src/powerlevel10k/powerlevel10k.zsh-theme'
->>~/dotfiles/zsh/.zshenv.villa-laptop
-#+end_src
--- For the desktop
-#+begin_src bash
-echo 'export P10K_THEME_FILE=/usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme'>>~/dotfiles/zsh/.zshenv.nate-h7
-#+end_src
-#+RESULTS:
-** Link your machine specific env file
-- For the villa laptop
-#+begin_src bash
-ln -s ~/dotfiles/zsh/.zshenv.villa-laptop ~/.zshenv.this-machine
-#+end_src
-- For the desktop
-#+begin_src bash
-ln -s ~/dotfiles/zsh/.zshenv.nate-h7 ~/.zshenv.this-machine
-#+end_src
-
-#+RESULTS:
-** Now link the main zshrc
-#+begin_src bash
-set -x
-if [ -f ~/.zshrc ]; then mv ~/.zshrc ~/.zshrc.old; fi
-ln -s ~/dotfiles/zsh/.zshrc ~/.zshrc
-
-if [ -f ~/.zshenv ]; then mv ~/.zshenv ~/.zshenv.old; fi
-ln -s ~/dotfiles/zsh/.zshenv ~/.zshenv
-
-if [ -f ~/.p10k.zsh ]; then mv ~/.p10k.zsh ~/.p10k.zsh.old; fi
-ln -s ~/dotfiles/.p10k.zsh ~/.p10k.zsh
-#+end_src
-
-#+RESULTS:
+Put machine-specific settings here (conda paths, extra aliases, etc).
 * pyenv
 #+begin_src bash
 curl https://pyenv.run | bash
 #+end_src
 * cmake and make for compiling vterm
 #+begin_src bash
-sudo pacman -Syu cmake make
+sudo dnf install cmake libtool
 #+end_src
 * Setup emacs bedrock
 #+begin_src bash
@@ -150,6 +123,9 @@ HINT: The one with all the footnotes, check punctuation.
 #+begin_src bash
 gpg -d backup-passwords.env.gpg -o backup-passwords.env
 #+end_src
+
+#+RESULTS:
+
 ** Copy the service files
 #+begin_src bash
 mkdir -p ~/.config/systemd/user
@@ -162,8 +138,16 @@ systemctl --user enable --now restic-backup.timer
 systemctl --user enable --now restic-prune.timer
 #+end_src
 ** Restore Documents
+First list a few files to verify the snapshot contents:
 #+begin_src bash
-restic -r s3:s3.us-east-005.backblazeb2.com/chodosh-backup-testing restore latest:/home/nate --target
+set -a; source ~/dotfiles/backup-passwords.env; set +a
+restic -r s3:s3.us-east-005.backblazeb2.com/chodosh-backup-testing ls latest | head -10
+#+end_src
+
+Then restore for real:
+#+begin_src bash
+set -a; source ~/dotfiles/backup-passwords.env; set +a
+restic -r s3:s3.us-east-005.backblazeb2.com/chodosh-backup-testing restore latest --target /
 #+end_src
 * Setup emacs daemon
 #+begin_src bash
