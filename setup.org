@@ -163,5 +163,21 @@ systemctl --user enable --now restic-prune.timer
 #+end_src
 ** Restore Documents
 #+begin_src bash
-restic -r s3:s3.us-east-005.backblazeb2.com/chodosh-backup-testing restore latest:/home/nate --target 
+restic -r s3:s3.us-east-005.backblazeb2.com/chodosh-backup-testing restore latest:/home/nate --target
+#+end_src
+* Setup emacs daemon
+#+begin_src bash
+mkdir -p ~/.config/systemd/user/emacs.service.d
+cp ~/dotfiles/systemd/emacs.service.d/override.conf ~/.config/systemd/user/emacs.service.d/override.conf
+systemctl --user enable --now emacs
+#+end_src
+* Setup syncthing
+#+begin_src bash
+systemctl --user enable --now syncthing
+#+end_src
+- Then open http://localhost:8384 to configure folders and devices
+* Setup tailscale
+#+begin_src bash
+sudo systemctl enable --now tailscaled
+tailscale up
 #+end_src
