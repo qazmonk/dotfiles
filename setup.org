@@ -146,6 +146,7 @@ ln -s ~/dotfiles/emacs-bedrock/mixins ~/.emacs.d/mixins
 #+RESULTS:
 * Setup ~/Documents backup
 ** Decrypt the password file
+HINT: The one with all the footnotes, check punctuation.
 #+begin_src bash
 gpg -d backup-passwords.env.gpg -o backup-passwords.env
 #+end_src
