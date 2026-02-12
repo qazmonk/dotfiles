@@ -1,4 +1,6 @@
 *
+!applications
+!applications/*
 !cmds
 !lisp
 !cmds/*.sh

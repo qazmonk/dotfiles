@@ -82,6 +82,11 @@ Then restore for real:
 set -a; source ~/dotfiles/backup-passwords.env; set +a
 restic -r s3:s3.us-east-005.backblazeb2.com/chodosh-backup-testing restore latest --target /
 #+end_src
+* Setup emacsclient desktop shortcut
+#+begin_src bash
+mkdir -p ~/.local/share/applications
+ln -s ~/dotfiles/applications/emacsclient.desktop ~/.local/share/applications/emacsclient.desktop
+#+end_src
 * Setup emacs daemon
 #+begin_src bash
 mkdir -p ~/.config/systemd/user/emacs.service.d
