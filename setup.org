@@ -90,8 +90,9 @@ ln -s ~/dotfiles/applications/emacsclient.desktop ~/.local/share/applications/em
 * Setup emacs daemon
 #+begin_src bash
 mkdir -p ~/.config/systemd/user/emacs.service.d
-cp ~/dotfiles/systemd/emacs.service.d/override.conf ~/.config/systemd/user/emacs.service.d/override.conf
-systemctl --user enable --now emacs
+ln -sf ~/dotfiles/systemd/emacs.service.d/override.conf ~/.config/systemd/user/emacs.service.d/override.conf
+systemctl --user daemon-reload
+systemctl --user reenable --now emacs
 #+end_src
 
 #+RESULTS:
