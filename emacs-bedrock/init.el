@@ -102,7 +102,7 @@ If the new path's directories does not exist, create them."
   :ensure t
   :demand t
   :config 
-  (setq exec-path-from-shell-arguments '())
+  (setq exec-path-from-shell-arguments '("-i"))
   (exec-path-from-shell-initialize))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
