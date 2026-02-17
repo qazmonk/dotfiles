@@ -1,13 +1,10 @@
 (use-package gptel
   :ensure t
   :config
-  (setq
-   gptel-model 'claude-opus-4-20250514 
-   gptel-backend (gptel-make-anthropic "Claude"
-                   :stream t :key (lambda ()
-                                   (auth-source-pick-first-password
-                                    :host "api.anthropic.com"))))
-  )
+  (setq gptel-model 'claude-sonnet-4-6
+        gptel-backend (gptel-make-anthropic "Claude"
+                        :stream t
+                        :key #'gptel-api-key-from-auth-source)))
 
 ;; install required inheritenv dependency:
 (use-package inheritenv
@@ -23,3 +20,4 @@
   ;; Optionally define a repeat map so that "M" will cycle thru Claude auto-accept/plan/confirm modes after invoking claude-code-cycle-mode / C-c M.
   :bind
   (:repeat-map my-claude-code-map ("M" . claude-code-cycle-mode)))
+ 
