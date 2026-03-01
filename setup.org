@@ -97,6 +97,14 @@ systemctl --user reenable --now emacs
 
 #+RESULTS:
 
+* Setup LanguageTool
+Download the standalone zip from https://languagetool.org and unzip it to =~/languagetool=. Then install Java and enable the systemd service:
+#+begin_src bash
+sudo dnf install java-latest-openjdk
+cp ~/dotfiles/systemd/languagetool.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now languagetool.service
+#+end_src
 * Setup syncthing
 #+begin_src bash
 systemctl --user enable --now syncthing
