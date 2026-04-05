@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Emacs Daemon
+Comment=Start Emacs in daemon mode for use with emacsclient
+Exec=emacs --daemon
+Hidden=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

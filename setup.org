@@ -88,11 +88,17 @@ mkdir -p ~/.local/share/applications
 ln -s ~/dotfiles/applications/emacsclient.desktop ~/.local/share/applications/emacsclient.desktop
 #+end_src
 * Setup emacs daemon
+Start emacs as a daemon via XDG autostart so it launches after the full graphical
+session is ready (with =DISPLAY=, =WAYLAND_DISPLAY=, etc. properly set).
 #+begin_src bash
-mkdir -p ~/.config/systemd/user/emacs.service.d
-ln -sf ~/dotfiles/systemd/emacs.service.d/override.conf ~/.config/systemd/user/emacs.service.d/override.conf
-systemctl --user daemon-reload
-systemctl --user reenable --now emacs
+mkdir -p ~/.config/autostart
+ln -sf ~/dotfiles/applications/emacs-daemon.desktop ~/.config/autostart/emacs-daemon.desktop
+#+end_src
+
+If migrating from the old systemd approach, disable and clean up the service:
+#+begin_src bash
+systemctl --user disable --now emacs
+rm -f ~/.config/systemd/user/emacs.service.d/override.conf
 #+end_src
 
 #+RESULTS:
@@ -101,7 +107,7 @@ systemctl --user reenable --now emacs
 Download the standalone zip from https://languagetool.org and unzip it to =~/languagetool=. Then install Java and enable the systemd service:
 #+begin_src bash
 sudo dnf install java-latest-openjdk
-cp ~/dotfiles/systemd/languagetool.service ~/.config/systemd/user/
+ln -s ~/dotfiles/systemd/languagetool.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now languagetool.service
 #+end_src
