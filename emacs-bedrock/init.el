@@ -273,6 +273,9 @@ If the new path's directories does not exist, create them."
 ;; AI, spooky
 (load-file (expand-file-name "mixins/llms.el" user-emacs-directory))
 
+;; Custom LLM agent (learning project)
+(load-file (expand-file-name "mixins/nate-agent.el" user-emacs-directory))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;;   Built-in customization framework
@@ -284,7 +287,9 @@ If the new path's directories does not exist, create them."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages '(claude-code inheritenv))
+ '(package-selected-packages
+   '(claude-code csv-mode htmlize inheritenv languagetool paredit
+		 rainbow-delimiters))
  '(package-vc-selected-packages
    '((claude-code :url "https://github.com/stevemolitor/claude-code.el")))
  '(safe-local-variable-values
