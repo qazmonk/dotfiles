@@ -20,7 +20,7 @@
 (require 'json)
 (require 'url)
 (require 'subr-x)
-;(require 'nate-agent-history)
+(require 'nate-agent-history)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Configuration
@@ -36,12 +36,6 @@
 
 (defvar nate-agent--debug-http nil
   "Keep around all http response buffers")
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Global State
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defvar-local nate-agent--last-request t
-  "Last JSON request body sent to the API, for debugging.") ;; TODO-MAYBE change this to a list of all requests?
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; API Layer
@@ -115,7 +109,8 @@ ON-ERROR is called with a description of the failure."
 		       (funcall on-error "api" (gethash "message" api-err "no message supplied"))
 		     (progn
 		      (funcall on-success body)
-		      (unless nate-agent--debug-http))))))
+		      (unless nate-agent--debug-http
+			(kill-buffer (current-buffer))))))))
 	   ((error debug)
 	    (funcall on-error "lisp" (format "%s\n%s" err saved-bt))))
 	 ))
@@ -198,35 +193,6 @@ DESTRUCTIVE — if non-nil, prompt user before running."
      (unless buf (error "No buffer named %S" name))
      (with-current-buffer buf (buffer-string)))))
 
-;; (nate-agent-register-tool
-;;  "edit_buffer"
-;;  "Replace an exact string in an Emacs buffer with new text.
-;; old_string must match exactly once — make it long enough to be unique."
-;;  '((type . "object")
-;;    (properties . ((name       . ((type . "string") (description . "Buffer name")))
-;;                   (old_string . ((type . "string")
-;;                                  (description . "Exact text to replace; must appear exactly once")))
-;;                   (new_string . ((type . "string") (description . "Replacement text")))))
-;;    (required . ["name" "old_string" "new_string"]))
-;;  (lambda (input)
-;;    (let* ((name    (gethash "name" input))
-;;           (old-str (gethash "old_string" input))
-;;           (new-str (gethash "new_string" input))
-;;           (buf     (get-buffer name)))
-;;      (unless buf (error "No buffer named %S" name))
-;;      (with-current-buffer buf
-;;        (let ((n (count-matches (regexp-quote old-str) (point-min) (point-max))))
-;;          (cond
-;;           ((= n 0) (error "old_string not found in %S" name))
-;;           ((> n 1) (error "old_string matches %d times in %S; must be unique" n name))
-;;           (t
-;;            (goto-char (point-min))
-;;            (search-forward old-str)
-;;            (replace-match new-str t t)
-;;            (format "Replaced in %s." name)))))))
-;;  t)
-					; destructive — prompt before running
-
 (nate-agent-register-tool
  "lookup_symbol"
  "Look up the *Help* documentation for a symbol. Returns the contents of the *Help* buffer"
@@ -247,17 +213,21 @@ DESTRUCTIVE — if non-nil, prompt user before running."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Agent Loop
-;;;;
-;;;; The loop: send history → get response → if tool_use: execute tools,
-;;;; append results to history, send again → if text: display, wait for user.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun nate-agent--schedule-step (buf)
+  (run-with-timer 0.1 nil
+		  (lambda ()
+		    (when (buffer-live-p buf)
+		      (with-current-buffer buf
+			(nate-agent-step))))))
 
 (defun nate-agent--run (buf)
   "Send BUF's conversation history to the API and handle the response."
   (nate-agent--ui-set-status buf "thinking…")
   (nate-agent--ui-append buf "\n* Assistant\n")
   (nate-agent--request
-   (buffer-local-value 'nate-agent--history buf)
+   (with-current-buffer buf (nate-agent--build-history))
    (nate-agent--tool-api-defs)
    (lambda (response) (nate-agent--handle-response buf response))
    (lambda (err-type err)
@@ -267,49 +237,50 @@ DESTRUCTIVE — if non-nil, prompt user before running."
      (nate-agent--ui-ready buf))))
 
 (defun nate-agent--handle-response (buf response)
-  "Append assistant message to history; dispatch on stop_reason."
+  "Render API response into BUF; dispatch on stop_reason."
   (let* ((stop-reason  (gethash "stop_reason" response))
          (content      (gethash "content" response))   ; vector of content blocks
          (content-list (append content nil)))            ; vector → list for dolist
     (nate-agent--ui-set-assistant-tag buf stop-reason) ; now we have a response, update the tag
-    ;; Record the full assistant message (may contain tool_use + text blocks)
-    (with-current-buffer buf
-      (setq nate-agent--history
-            (append nate-agent--history
-                    (list `((role . "assistant") (content . ,content))))))
     (if (string= stop-reason "tool_use")
-        (nate-agent--handle-tool-calls buf content-list)
+        (progn
+	  (nate-agent--ui-insert-tool-calls buf content-list)
+	  (nate-agent--schedule-step buf))
       ;; Terminal response: extract text blocks and display
       (nate-agent--ui-append-response
        buf
        (mapconcat (lambda (block)
-                    (when (string= (gethash "type" block) "text")
-                      (gethash "text" block)))
+                    (if (string= (gethash "type" block) "text")
+                      (gethash "text" block)
+		      ""))
                   content-list ""))
       (nate-agent--ui-ready buf))))
 
-(defun nate-agent--handle-tool-calls (buf content-list)
-  "Execute every tool_use block in CONTENT-LIST, collect results, loop."
-  (let (results)
-    (dolist (block content-list) 
-      (cond
-       ((string= (gethash "type" block) "tool_use") (let* ((id     (gethash "id" block))
-							   (name   (gethash "name" block))
-							   (input  (gethash "input" block))
-							   (result (nate-agent--execute-tool name input)))
-						      (nate-agent--ui-append-tool-call buf name input id result)
-						      (push `((type        . "tool_result")
-							      (tool_use_id . ,id)
-							      (content     . ,result))
-							    results)))
-       ((string= (gethash "type" block) "text") (nate-agent--ui-append-thinking buf (gethash "text" block)))))
-    ;; The API requires tool results in a user-role message
-    (with-current-buffer buf
-      (setq nate-agent--history
-            (append nate-agent--history
-                    (list `((role    . "user")
-                            (content . ,(apply #'vector (nreverse results))))))))
-    (nate-agent--run buf)))
+(defun nate-agent-step ()
+  "Advance the agent by calling the API or executing tools.
+In waiting-for-inut state: reads the current * User text and send it.
+In needs-continuation state: sends tool results already in the buffer.
+In needs-tool-execution state: tries to execute the next pending tool."
+  (interactive)
+  (unless (eq major-mode 'nate-agent-mode)
+    (user-error "Not in agent buffer"))
+  (pcase (nate-agent--buffer-state)
+    ('waiting-for-input
+     (when (string-empty-p (nate-agent--current-input))
+       (user-error "Nothing to send"))
+     (nate-agent--run (current-buffer)))
+    ('needs-continuation
+     (nate-agent--run (current-buffer)))
+    (`(needs-tool-execution . ,props)
+     (let* ((id (plist-get props :id))
+	    (name (plist-get props :name))
+	    (input (plist-get props :input))
+	    (result (nate-agent--execute-tool name input)))
+       (when result
+	 (nate-agent--ui-write-tool-result (current-buffer) id result)
+	 (nate-agent--schedule-step (current-buffer)))))
+    (state
+     (user-error "Cannot step in state: %s" state))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; UI Layer
@@ -320,7 +291,7 @@ DESTRUCTIVE — if non-nil, prompt user before running."
 
 (defvar nate-agent-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c C-c") #'nate-agent-send)
+    (define-key map (kbd "C-c C-c") #'nate-agent-step)
     map))
 
 (define-derived-mode nate-agent-mode org-mode "Agent"
@@ -343,30 +314,53 @@ DESTRUCTIVE — if non-nil, prompt user before running."
 (defun nate-agent--ui-append-thinking (buf text)
   "Render a thinking text block that came interspersed with tool calls into BUF."
   (with-current-buffer buf
+    (goto-char (point-max))
     (let ((start (point)))
       (insert "** Thinking\n")
       (nate-agent--ui-append-literal buf text)
-      (with-current-buffer buf
-	(save-excursion
-	  (goto-char start)
-	  (org-fold-subtree t))))))
+      (save-excursion
+	(goto-char start)
+	(org-fold-subtree t)))))
 
-(defun nate-agent--ui-append-tool-call (buf name input id result)
-  "Render a tool call and its result into BUF."
+(defun nate-agent--ui-append-tool-call (buf name input id)
+  "Render a tool call into BUF."
   (with-current-buffer buf
+    (goto-char (point-max))
     (insert "\n")
     (let ((start (point-max)))
       (insert (format "** Tool: %s\n" name))
       (org-set-property "TOOL_NAME" name)
       (org-set-property "TOOL_ID" id)
       (goto-char (point-max))
-      (insert (format "*** Input\n#+begin_src json\n%s\n#+end_src\n*** Result\n" (json-encode input)))
-      (nate-agent--ui-append-literal buf result)
-      (with-current-buffer buf
-	(save-excursion
-	  (goto-char start)
-	  (org-fold-subtree t))))))
+      (insert (format "*** Input\n#+begin_src json\n%s\n#+end_src\n" (json-encode input))))))
 
+(defun nate-agent--ui-write-tool-result (buf id result)
+  "Append *** Result under the ** Tool heading matching the id. Folds the tool subtree when done"
+  (with-current-buffer buf
+    (goto-char (point-max))
+    (unless (re-search-backward (concat ":TOOL_ID: +" (regexp-quote id)) nil t)
+      (error "No tool heading found for TOOL +ID %s" id))
+    (org-back-to-heading t)
+    (let ((subtree-start (point)))
+      (org-end-of-subtree t t)
+      (insert (format "*** Result\n#+begin_example\n%s\n#+end_example\n"
+		      (org-escape-code-in-string result)))
+      (save-excursion
+	(goto-char subtree-start)
+	(org-fold-subtree t)))))
+
+(defun nate-agent--ui-insert-tool-calls (buf content-list)
+  "Inserts tool_use blocks in CONTENT-LIST."
+  (dolist (block content-list) 
+    (cond
+     ((string= (gethash "type" block) "tool_use")
+      (let* ((id     (gethash "id" block))
+	     (name   (gethash "name" block))
+	     (input  (gethash "input" block)))
+	(nate-agent--ui-append-tool-call buf name input id)))
+     ((string= (gethash "type" block) "text")
+      (nate-agent--ui-append-thinking buf (gethash "text" block)))))
+  (nate-agent--ui-set-status buf nil))
 
 (defun nate-agent--ui-append-response (buf text)
   "Render the model's final text response into BUF.
@@ -415,19 +409,6 @@ become (***), keeping them nested under the ** Response heading."
     (if (search-backward "\n* User\n" nil t)
         (string-trim (buffer-substring-no-properties (match-end 0) (point-max)))
       "")))
-
-(defun nate-agent-send ()
-  "Send the current user input to the agent."
-  (interactive)
-  (unless (eq major-mode 'nate-agent-mode)
-    (user-error "Not in an agent buffer"))
-  (let ((input (nate-agent--current-input)))
-    (when (string-empty-p input)
-      (user-error "Nothing to send"))
-    (setq nate-agent--history
-          (append nate-agent--history
-                  (list `((role . "user") (content . ,input)))))
-    (nate-agent--run (current-buffer))))
 
 ;;;###autoload
 (defun nate-agent ()

@@ -274,6 +274,7 @@ If the new path's directories does not exist, create them."
 (load-file (expand-file-name "mixins/llms.el" user-emacs-directory))
 
 ;; Custom LLM agent (learning project)
+(add-to-list 'load-path (expand-file-name "mixins" user-emacs-directory))
 (load-file (expand-file-name "mixins/nate-agent.el" user-emacs-directory))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
