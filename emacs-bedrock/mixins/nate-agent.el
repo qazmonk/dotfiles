@@ -20,6 +20,7 @@
 (require 'json)
 (require 'url)
 (require 'subr-x)
+;(require 'nate-agent-history)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Configuration
@@ -33,13 +34,13 @@
 
 (defvar nate-agent--system-prompt "You are a helpful assistant running inside Emacs. Format all responses using org-mode syntax rather than markdown. Use * for headings, -for lists, ~code~ for inline code, and #+begin_src / #+end_src for code blocks.")
 
-(defvar nate-agent--debug-http t
+(defvar nate-agent--debug-http nil
   "Keep around all http response buffers")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Global State
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defvar-local nate-agent--last-request nil
+(defvar-local nate-agent--last-request t
   "Last JSON request body sent to the API, for debugging.") ;; TODO-MAYBE change this to a list of all requests?
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -97,21 +98,27 @@ ON-ERROR is called with a description of the failure."
      (lambda (status)
        (when nate-agent--debug-http
 	(rename-buffer "*nate-agent-http-resp" t))
-       ;; Wrap everything: process sentinel errors are swallowed silently,
-       ;; so we catch them here and route to on-error instead.
-       (condition-case err
-	   (if-let* ((http-err (plist-get status :error)))
-	       (funcall on-error "http" (format "%s" http-err))
-             (goto-char url-http-end-of-headers)
-	     (set-buffer-multibyte t)
-             (let* ((json-object-type 'hash-table)
-		    (body (json-read)))
-               (if-let ((api-err (gethash "error" body)))
-		   (funcall on-error "api" (gethash "message" api-err "no message supplied"))
-		 (funcall on-success body))))
-	 ((error debug)
-	  (funcall on-error "lisp" (format "%s" err))
-	  )))
+       (let (saved-bt)
+	 ;; Wrap everything: process sentinel errors are swallowed silently,
+	 ;; so we catch them here and route to on-error instead.
+	 (condition-case err
+	     ;; Catch backtraces for printing
+	     (handler-bind ((error (lambda (_err)
+				     (setq saved-bt (with-output-to-string (backtrace))))))
+	       (if-let* ((http-err (plist-get status :error)))
+		   (funcall on-error "http" (format "%s" http-err))
+		 (goto-char url-http-end-of-headers)
+		 (set-buffer-multibyte t)
+		 (let* ((json-object-type 'hash-table)
+			(body (json-read)))
+		   (if-let ((api-err (gethash "error" body)))
+		       (funcall on-error "api" (gethash "message" api-err "no message supplied"))
+		     (progn
+		      (funcall on-success body)
+		      (unless nate-agent--debug-http))))))
+	   ((error debug)
+	    (funcall on-error "lisp" (format "%s\n%s" err saved-bt))))
+	 ))
      nil t)))   ; nil = no extra callback args, t = silent (don't pop buffer)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -191,33 +198,34 @@ DESTRUCTIVE — if non-nil, prompt user before running."
      (unless buf (error "No buffer named %S" name))
      (with-current-buffer buf (buffer-string)))))
 
-(nate-agent-register-tool
- "edit_buffer"
- "Replace an exact string in an Emacs buffer with new text.
-old_string must match exactly once — make it long enough to be unique."
- '((type . "object")
-   (properties . ((name       . ((type . "string") (description . "Buffer name")))
-                  (old_string . ((type . "string")
-                                 (description . "Exact text to replace; must appear exactly once")))
-                  (new_string . ((type . "string") (description . "Replacement text")))))
-   (required . ["name" "old_string" "new_string"]))
- (lambda (input)
-   (let* ((name    (gethash "name" input))
-          (old-str (gethash "old_string" input))
-          (new-str (gethash "new_string" input))
-          (buf     (get-buffer name)))
-     (unless buf (error "No buffer named %S" name))
-     (with-current-buffer buf
-       (let ((n (count-matches (regexp-quote old-str) (point-min) (point-max))))
-         (cond
-          ((= n 0) (error "old_string not found in %S" name))
-          ((> n 1) (error "old_string matches %d times in %S; must be unique" n name))
-          (t
-           (goto-char (point-min))
-           (search-forward old-str)
-           (replace-match new-str t t)
-           (format "Replaced in %s." name)))))))
- t)  ; destructive — prompt before running
+;; (nate-agent-register-tool
+;;  "edit_buffer"
+;;  "Replace an exact string in an Emacs buffer with new text.
+;; old_string must match exactly once — make it long enough to be unique."
+;;  '((type . "object")
+;;    (properties . ((name       . ((type . "string") (description . "Buffer name")))
+;;                   (old_string . ((type . "string")
+;;                                  (description . "Exact text to replace; must appear exactly once")))
+;;                   (new_string . ((type . "string") (description . "Replacement text")))))
+;;    (required . ["name" "old_string" "new_string"]))
+;;  (lambda (input)
+;;    (let* ((name    (gethash "name" input))
+;;           (old-str (gethash "old_string" input))
+;;           (new-str (gethash "new_string" input))
+;;           (buf     (get-buffer name)))
+;;      (unless buf (error "No buffer named %S" name))
+;;      (with-current-buffer buf
+;;        (let ((n (count-matches (regexp-quote old-str) (point-min) (point-max))))
+;;          (cond
+;;           ((= n 0) (error "old_string not found in %S" name))
+;;           ((> n 1) (error "old_string matches %d times in %S; must be unique" n name))
+;;           (t
+;;            (goto-char (point-min))
+;;            (search-forward old-str)
+;;            (replace-match new-str t t)
+;;            (format "Replaced in %s." name)))))))
+;;  t)
+					; destructive — prompt before running
 
 (nate-agent-register-tool
  "lookup_symbol"
@@ -247,12 +255,15 @@ old_string must match exactly once — make it long enough to be unique."
 (defun nate-agent--run (buf)
   "Send BUF's conversation history to the API and handle the response."
   (nate-agent--ui-set-status buf "thinking…")
+  (nate-agent--ui-append buf "\n* Assistant\n")
   (nate-agent--request
    (buffer-local-value 'nate-agent--history buf)
    (nate-agent--tool-api-defs)
    (lambda (response) (nate-agent--handle-response buf response))
    (lambda (err-type err)
-     (nate-agent--ui-append buf (format "\n* Error: %s\n%s" err-type err))
+     (nate-agent--ui-set-assistant-tag buf "error")
+     (nate-agent--ui-append buf (format "\n** Error: %s\n" err-type))
+     (nate-agent--ui-append-literal buf err)
      (nate-agent--ui-ready buf))))
 
 (defun nate-agent--handle-response (buf response)
@@ -260,6 +271,7 @@ old_string must match exactly once — make it long enough to be unique."
   (let* ((stop-reason  (gethash "stop_reason" response))
          (content      (gethash "content" response))   ; vector of content blocks
          (content-list (append content nil)))            ; vector → list for dolist
+    (nate-agent--ui-set-assistant-tag buf stop-reason) ; now we have a response, update the tag
     ;; Record the full assistant message (may contain tool_use + text blocks)
     (with-current-buffer buf
       (setq nate-agent--history
@@ -279,17 +291,18 @@ old_string must match exactly once — make it long enough to be unique."
 (defun nate-agent--handle-tool-calls (buf content-list)
   "Execute every tool_use block in CONTENT-LIST, collect results, loop."
   (let (results)
-    (dolist (block content-list)
-      (when (string= (gethash "type" block) "tool_use")
-        (let* ((id     (gethash "id" block))
-               (name   (gethash "name" block))
-               (input  (gethash "input" block))
-               (result (nate-agent--execute-tool name input)))
-          (nate-agent--ui-append-tool-call buf name input result)
-          (push `((type        . "tool_result")
-                  (tool_use_id . ,id)
-                  (content     . ,result))
-                results))))
+    (dolist (block content-list) 
+      (cond
+       ((string= (gethash "type" block) "tool_use") (let* ((id     (gethash "id" block))
+							   (name   (gethash "name" block))
+							   (input  (gethash "input" block))
+							   (result (nate-agent--execute-tool name input)))
+						      (nate-agent--ui-append-tool-call buf name input id result)
+						      (push `((type        . "tool_result")
+							      (tool_use_id . ,id)
+							      (content     . ,result))
+							    results)))
+       ((string= (gethash "type" block) "text") (nate-agent--ui-append-thinking buf (gethash "text" block)))))
     ;; The API requires tool results in a user-role message
     (with-current-buffer buf
       (setq nate-agent--history
@@ -327,33 +340,46 @@ old_string must match exactly once — make it long enough to be unique."
     (insert (format "#+begin_example\n%s\n#+end_example"
 		    (org-escape-code-in-string text)))))
 
-(defun nate-agent--ui-append-tool-call (buf name input result)
-  "Render a tool call and its result into BUF."
+(defun nate-agent--ui-append-thinking (buf text)
+  "Render a thinking text block that came interspersed with tool calls into BUF."
+  (with-current-buffer buf
+    (let ((start (point)))
+      (insert "** Thinking\n")
+      (nate-agent--ui-append-literal buf text)
+      (with-current-buffer buf
+	(save-excursion
+	  (goto-char start)
+	  (org-fold-subtree t))))))
 
-  (nate-agent--ui-append buf "\n")
-  (let ((start  (nate-agent--ui-append
-		 buf
-		 (format "** Tool: %s\n***Input\n%s\n***Result\n"
-			 name
-			 (json-encode input)))))
-    (nate-agent--ui-append-literal buf result)
-    (with-current-buffer buf
-      (save-excursion
-	(goto-char start)
-	(org-fold-subtree t)))))
+(defun nate-agent--ui-append-tool-call (buf name input id result)
+  "Render a tool call and its result into BUF."
+  (with-current-buffer buf
+    (insert "\n")
+    (let ((start (point-max)))
+      (insert (format "** Tool: %s\n" name))
+      (org-set-property "TOOL_NAME" name)
+      (org-set-property "TOOL_ID" id)
+      (goto-char (point-max))
+      (insert (format "*** Input\n#+begin_src json\n%s\n#+end_src\n*** Result\n" (json-encode input)))
+      (nate-agent--ui-append-literal buf result)
+      (with-current-buffer buf
+	(save-excursion
+	  (goto-char start)
+	  (org-fold-subtree t))))))
 
 
 (defun nate-agent--ui-append-response (buf text)
   "Render the model's final text response into BUF.
 Any headings in TEXT are demoted so that top-level (*) headings
 become (***), keeping them nested under the ** Response heading."
-  (nate-agent--ui-append buf (format "\n** Response\n"))
+  (nate-agent--ui-append buf (format "** Response\n"))
   (let ((response-start (with-current-buffer buf (point-max))))
     (nate-agent--ui-append buf (format "%s" text))
     (with-current-buffer buf
       (save-excursion
         (save-restriction
           (narrow-to-region response-start (point-max))
+	  
 	  (goto-char (point-min))
 	  (while (re-search-forward org-heading-regexp nil t)
 	    (beginning-of-line)
@@ -361,7 +387,13 @@ become (***), keeping them nested under the ** Response heading."
 	      (org-demote-subtree))
 	    (org-end-of-subtree t t)))))))
 
- 
+(defun nate-agent--ui-set-assistant-tag (buf tag)
+    "Set TAG on the most recent * Assistant heading in BUF."
+    (with-current-buffer buf
+      (save-excursion
+        (goto-char (point-max))
+        (when (re-search-backward "^\\* Assistant" nil t)
+          (org-set-tags (list tag)))))) 
 
 (defun nate-agent--ui-set-status (buf msg)
   "Update the mode-line status for BUF.  Pass nil to clear."
@@ -395,7 +427,6 @@ become (***), keeping them nested under the ** Response heading."
     (setq nate-agent--history
           (append nate-agent--history
                   (list `((role . "user") (content . ,input)))))
-    (nate-agent--ui-append (current-buffer) "\n* Assistant")
     (nate-agent--run (current-buffer))))
 
 ;;;###autoload
@@ -417,6 +448,5 @@ become (***), keeping them nested under the ** Response heading."
 
 ;;;;; NOTES
 ;; TODO-LONG make the buffer contents itself a full one-to-one representation of the message history needed to continue. Then conversations can be just saved as org files.
-;; TODO-NEXT work on this project with this project
-;; TODO-NEXT more tools to allow reading from the manual and web searching etc.
+;;
 ;; TODO-NEXT make editing work through a diff interface.
