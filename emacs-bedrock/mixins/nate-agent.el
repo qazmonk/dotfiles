@@ -31,7 +31,7 @@
 (defvar nate-agent-max-tokens 8096
   "Maximum tokens for model responses.")
 
-(defvar nate-agent--system-prompt "You are a helpful assistant running inside Emacs. Format all responses using org-mode syntax rather than markdown. Use * for headings, -for lists, ~code~ for inline code, and #+begin_src / #+end_src for code blocks. Your responses are always displayed under a second level heading, so any sub headings in your response should start at level ***.")
+(defvar nate-agent--system-prompt "You are a helpful assistant running inside Emacs. Format all responses using org-mode syntax rather than markdown. Use * for headings, -for lists, ~code~ for inline code, and #+begin_src / #+end_src for code blocks.")
 
 (defvar nate-agent--debug-http t
   "Keep around all http response buffers")
@@ -219,6 +219,24 @@ old_string must match exactly once — make it long enough to be unique."
            (format "Replaced in %s." name)))))))
  t)  ; destructive — prompt before running
 
+(nate-agent-register-tool
+ "lookup_symbol"
+ "Look up the *Help* documentation for a symbol. Returns the contents of the *Help* buffer"
+ '((type . "object")
+   (properties . ((name . ((type . "string") (description . "The name of the symbol to look up.")))))
+   (required . ["name"]))
+ (lambda (input)
+   (let* ((sym-name (gethash "name" input))
+	  (sym (intern-soft sym-name)))
+     (unless sym
+       (error "No symbol found for %S" sym-name))
+     (save-window-excursion	  ; don't clobber user's window layout
+       (describe-symbol sym)	  ; populates *Help*
+       (with-current-buffer (help-buffer)
+         (buffer-string)))))
+ nil)
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Agent Loop
 ;;;;
@@ -297,7 +315,7 @@ old_string must match exactly once — make it long enough to be unique."
   (setq nate-agent--history nil))
 
 (defun nate-agent--ui-append (buf text)
-  "Append TEXT to the end of BUF."
+  "Append TEXT to the end of BUF. Returns the point at the start of the inserted text"
   (with-current-buffer buf
     (goto-char (point-max))
     (insert text)))
@@ -311,20 +329,39 @@ old_string must match exactly once — make it long enough to be unique."
 
 (defun nate-agent--ui-append-tool-call (buf name input result)
   "Render a tool call and its result into BUF."
-  (nate-agent--ui-append
-   buf
-   (format "\n** Tool: %s\n***Input\n%s\n***Result\n"
-           name
-           (json-encode input)))
-  (nate-agent--ui-append-literal buf result)
-  (with-current-buffer buf
-    (save-excursion
-      (search-backward "** Tool")
-      (org-fold-subtree t))))
+
+  (nate-agent--ui-append buf "\n")
+  (let ((start  (nate-agent--ui-append
+		 buf
+		 (format "** Tool: %s\n***Input\n%s\n***Result\n"
+			 name
+			 (json-encode input)))))
+    (nate-agent--ui-append-literal buf result)
+    (with-current-buffer buf
+      (save-excursion
+	(goto-char start)
+	(org-fold-subtree t)))))
+
 
 (defun nate-agent--ui-append-response (buf text)
-  "Render the model's final text response into BUF."
-  (nate-agent--ui-append buf (format "\n** Response\n%s" text)))
+  "Render the model's final text response into BUF.
+Any headings in TEXT are demoted so that top-level (*) headings
+become (***), keeping them nested under the ** Response heading."
+  (nate-agent--ui-append buf (format "\n** Response\n"))
+  (let ((response-start (with-current-buffer buf (point-max))))
+    (nate-agent--ui-append buf (format "%s" text))
+    (with-current-buffer buf
+      (save-excursion
+        (save-restriction
+          (narrow-to-region response-start (point-max))
+	  (goto-char (point-min))
+	  (while (re-search-forward org-heading-regexp nil t)
+	    (beginning-of-line)
+	    (while (< (org-current-level) 3)
+	      (org-demote-subtree))
+	    (org-end-of-subtree t t)))))))
+
+ 
 
 (defun nate-agent--ui-set-status (buf msg)
   "Update the mode-line status for BUF.  Pass nil to clear."
@@ -358,7 +395,7 @@ old_string must match exactly once — make it long enough to be unique."
     (setq nate-agent--history
           (append nate-agent--history
                   (list `((role . "user") (content . ,input)))))
-    (nate-agent--ui-append (current-buffer) "\n* Assistant\n")
+    (nate-agent--ui-append (current-buffer) "\n* Assistant")
     (nate-agent--run (current-buffer))))
 
 ;;;###autoload
@@ -382,3 +419,4 @@ old_string must match exactly once — make it long enough to be unique."
 ;; TODO-LONG make the buffer contents itself a full one-to-one representation of the message history needed to continue. Then conversations can be just saved as org files.
 ;; TODO-NEXT work on this project with this project
 ;; TODO-NEXT more tools to allow reading from the manual and web searching etc.
+;; TODO-NEXT make editing work through a diff interface.
