@@ -156,7 +156,9 @@ All other top-level headings are ignored."
              ((string= title "User")
               (let ((text (nate-agent--subtree-text h)))
                 (when (and text (not (string-empty-p text)))
-                  (push `((role . "user") (content . ,text)) history))))
+                  (push `((role . "user")
+                          (content . [((type . "text") (text . ,text))]))
+                        history))))
              ((string= title "Assistant")
               (cond
                ((member "tool_use" tags)
@@ -166,7 +168,13 @@ All other top-level headings are ignored."
                 (dolist (msg (nate-agent--parse-end-turn-assistant h))
                   (push msg history)))))))))
       nil nil 'headline)
-    (nreverse history)))
+    (let* ((msgs     (nreverse history))
+           (content  (alist-get 'content (car (last msgs))))
+           (last-i   (1- (length content))))
+      (aset content last-i
+            (append (aref content last-i)
+                    '((cache_control . ((type . "ephemeral"))))))
+      msgs)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; State detection

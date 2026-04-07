@@ -21,7 +21,7 @@
 (require 'url)
 (require 'subr-x)
 (require 'nate-agent-history)
-
+(require 'nate-agent-tools)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Configuration
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -32,29 +32,41 @@
 (defvar nate-agent-max-tokens 8096
   "Maximum tokens for model responses.")
 
-(defvar nate-agent--system-prompt "You are a helpful assistant running inside Emacs. Format all responses using org-mode syntax rather than markdown. Use * for headings, -for lists, ~code~ for inline code, and #+begin_src / #+end_src for code blocks.")
+(defvar nate-agent--system-prompt "You are a helpful assistant running inside Emacs. Format all responses using org-mode syntax rather than markdown. Use * for headings, -for lists, ~code~ for inline code, and #+begin_src / #+end_src for code blocks. When proposing edits, prefer to send multiple edits together rather than sequetial edit then read.")
 
-(defvar nate-agent--debug-http nil
-  "Keep around all http response buffers")
+(defvar-local nate-agent--last-request nil
+  "Raw JSON string of the last API request, for debugging.")
+
+(defvar-local nate-agent--last-response nil
+  "Raw JSON string of the last API response, for debugging.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; API Layer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun nate-agent-show-last-request ()
-  "Pretty-print the last API request into a buffer"
-  (interactive)
-  (unless nate-agent--last-request
-    (user-error "nate-agent--last-reqeuest is nil")
-    )
-  (let ((last-req nate-agent--last-request)
-	(buf (get-buffer-create "*nate-agent-request*")))
+(defun nate-agent--show-json-buf (title json-string)
+  "Pretty-print JSON-STRING into a buffer named TITLE and display it."
+  (let ((buf (get-buffer-create title)))
     (with-current-buffer buf
       (erase-buffer)
-      (insert last-req)
+      (insert json-string)
       (json-pretty-print-buffer)
       (json-mode))
-    (display-buffer (get-buffer "*nate-agent-request*"))))
+    (display-buffer buf)))
+
+(defun nate-agent-show-last-request ()
+  "Pretty-print the last API request into a buffer."
+  (interactive)
+  (unless nate-agent--last-request
+    (user-error "No request has been made yet"))
+  (nate-agent--show-json-buf "*nate-agent-request*" nate-agent--last-request))
+
+(defun nate-agent-show-last-response ()
+  "Pretty-print the last API response into a buffer."
+  (interactive)
+  (unless nate-agent--last-response
+    (user-error "No response has been received yet"))
+  (nate-agent--show-json-buf "*nate-agent-response*" nate-agent--last-response))
 
 (defun nate-agent--api-key ()
   "Retrieve the Anthropic API key from auth-source.
@@ -79,7 +91,9 @@ ON-ERROR is called with a description of the failure."
 		(json-encode
 		 `((model      . ,nate-agent-model)
 		   (max_tokens . ,nate-agent-max-tokens)
-		   (system     . ,nate-agent--system-prompt)
+		   (system     . [((type . "text")
+                                   (text . ,nate-agent--system-prompt)
+                                   (cache_control . ((type . "ephemeral"))))])
 		   (tools      . ,(apply #'vector tool-defs))
 		   (messages   . ,(apply #'vector messages))))
 		'utf-8))
@@ -90,8 +104,6 @@ ON-ERROR is called with a description of the failure."
     (url-retrieve
      "https://api.anthropic.com/v1/messages"
      (lambda (status)
-       (when nate-agent--debug-http
-	(rename-buffer "*nate-agent-http-resp" t))
        (let (saved-bt)
 	 ;; Wrap everything: process sentinel errors are swallowed silently,
 	 ;; so we catch them here and route to on-error instead.
@@ -100,21 +112,21 @@ ON-ERROR is called with a description of the failure."
 	     (handler-bind ((error (lambda (_err)
 				     (setq saved-bt (with-output-to-string (backtrace))))))
 	       (if-let* ((http-err (plist-get status :error)))
-		   (funcall on-error "http" (format "%s" http-err))
+		   (funcall on-error "http" (format "%s" (buffer-string)))
 		 (goto-char url-http-end-of-headers)
 		 (set-buffer-multibyte t)
-		 (let* ((json-object-type 'hash-table)
-			(body (json-read)))
+		 (let* ((response-string (buffer-substring-no-properties (point) (point-max)))
+			(json-object-type 'hash-table)
+			(body (json-read-from-string response-string)))
+		   (with-current-buffer (get-buffer "*nate-agent*")
+		     (setq nate-agent--last-response response-string))
+		   (kill-buffer (current-buffer))
 		   (if-let ((api-err (gethash "error" body)))
 		       (funcall on-error "api" (gethash "message" api-err "no message supplied"))
-		     (progn
-		      (funcall on-success body)
-		      (unless nate-agent--debug-http
-			(kill-buffer (current-buffer))))))))
+		     (funcall on-success body)))))
 	   ((error debug)
-	    (funcall on-error "lisp" (format "%s\n%s" err saved-bt))))
-	 ))
-     nil t)))   ; nil = no extra callback args, t = silent (don't pop buffer)
+	    (funcall on-error "lisp" (format "%s\n%s" err saved-bt)))))
+       nil t))))   ; nil = no extra callback args, t = silent (don't pop buffer)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Tool Layer
@@ -139,11 +151,15 @@ DESTRUCTIVE — if non-nil, prompt user before running."
            nate-agent--tool-registry))
 
 (defun nate-agent--tool-api-defs ()
-  "Return all registered tools as a list of alists for the request body."
+  "Return all registered tools as a list of alists for the request body.
+The last tool definition is stamped with cache_control so the full set
+of tool definitions is cached by the API across requests."
   (let (defs)
     (maphash (lambda (_name tool) (push (plist-get tool :api-def) defs))
              nate-agent--tool-registry)
-    defs))
+    (append (butlast defs)
+            (list (append (car (last defs))
+                          '((cache_control . ((type . "ephemeral")))))))))
 
 (defun nate-agent--execute-tool (name input)
   "Execute tool NAME with INPUT alist.  Returns a result string."
@@ -156,59 +172,6 @@ DESTRUCTIVE — if non-nil, prompt user before running."
     (condition-case err
         (funcall (plist-get tool :fn) input)
       (error (format "Tool error: %s" (error-message-string err))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Built-in Tools
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; json-encode encodes nil as null and '() as null — not as {}.
-;; For tools with no input properties, we need a real empty hash table.
-(defconst nate-agent--empty-props (make-hash-table :test 'equal)
-  "Empty JSON object ({}) for tools that take no input properties.")
-
-(nate-agent-register-tool
- "list_buffers"
- "List all open Emacs buffers: their names, major modes, and file paths."
- `((type . "object") (properties . ,nate-agent--empty-props) (required . []))
- (lambda (_input)
-   (mapconcat
-    (lambda (buf)
-      (format "  %-30s  mode:%-22s  file:%s"
-              (buffer-name buf)
-              (with-current-buffer buf (symbol-name major-mode))
-              (or (buffer-file-name buf) "(none)")))
-    (buffer-list)
-    "\n")))
-
-(nate-agent-register-tool
- "read_buffer"
- "Return the full text contents of an Emacs buffer."
- '((type . "object")
-   (properties . ((name . ((type . "string")
-                           (description . "Exact buffer name, e.g. \"init.el\"")))))
-   (required . ["name"]))
- (lambda (input)
-   (let* ((name (gethash "name" input))
-          (buf  (get-buffer name)))
-     (unless buf (error "No buffer named %S" name))
-     (with-current-buffer buf (buffer-string)))))
-
-(nate-agent-register-tool
- "lookup_symbol"
- "Look up the *Help* documentation for a symbol. Returns the contents of the *Help* buffer"
- '((type . "object")
-   (properties . ((name . ((type . "string") (description . "The name of the symbol to look up.")))))
-   (required . ["name"]))
- (lambda (input)
-   (let* ((sym-name (gethash "name" input))
-	  (sym (intern-soft sym-name)))
-     (unless sym
-       (error "No symbol found for %S" sym-name))
-     (save-window-excursion	  ; don't clobber user's window layout
-       (describe-symbol sym)	  ; populates *Help*
-       (with-current-buffer (help-buffer)
-         (buffer-string)))))
- nil)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -274,11 +237,13 @@ In needs-tool-execution state: tries to execute the next pending tool."
     (`(needs-tool-execution . ,props)
      (let* ((id (plist-get props :id))
 	    (name (plist-get props :name))
-	    (input (plist-get props :input))
-	    (result (nate-agent--execute-tool name input)))
-       (when result
-	 (nate-agent--ui-write-tool-result (current-buffer) id result)
-	 (nate-agent--schedule-step (current-buffer)))))
+	    (input (plist-get props :input)))
+       (puthash "_tool_id" id input)
+       (puthash "_agent_buf" (current-buffer) input)
+       (if-let ((result (nate-agent--execute-tool name input)))
+	   (progn
+	     (nate-agent--ui-write-tool-result (current-buffer) id result)
+	     (nate-agent--schedule-step (current-buffer))))))
     (state
      (user-error "Cannot step in state: %s" state))))
 
@@ -428,6 +393,6 @@ become (***), keeping them nested under the ** Response heading."
 ;;; nate-agent.el ends here
 
 ;;;;; NOTES
-;; TODO-LONG make the buffer contents itself a full one-to-one representation of the message history needed to continue. Then conversations can be just saved as org files.
-;;
-;; TODO-NEXT make editing work through a diff interface.
+;; TODO-NEXT change diff interface so that C-c C-a is accept all hunks, and then some other key for accepting as-is
+;; TODO-NEXT
+;; 
