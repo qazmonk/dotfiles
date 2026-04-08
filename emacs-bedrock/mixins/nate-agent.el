@@ -32,7 +32,7 @@
 (defvar nate-agent-max-tokens 8096
   "Maximum tokens for model responses.")
 
-(defvar nate-agent--system-prompt "You are a helpful assistant running inside Emacs. Format all responses using org-mode syntax rather than markdown. Use * for headings, -for lists, ~code~ for inline code, and #+begin_src / #+end_src for code blocks. When proposing edits, prefer to send multiple edits together rather than sequetial edit then read.")
+(defvar nate-agent--system-prompt "You are a helpful assistant running inside Emacs. Format all responses using org-mode syntax rather than markdown. Use * for headings, -for lists, ~code~ for inline code, and #+begin_src / #+end_src for code blocks. When proposing edits, you MUST batch all independent tool calls into a single response rather than sequential edit then read. Before emitting any tool call, check whether there are other tool calls you could emit at the same time. If yes, emit them all together. Do not emit a tool call, wait for its result, and then emit another tool call that did not depend on that result. This harness is actively in development by the user so suggest new tools as they come up.")
 
 (defvar-local nate-agent--last-request nil
   "Raw JSON string of the last API request, for debugging.")
@@ -78,10 +78,11 @@ Looks for: machine api.anthropic.com login apikey password sk-ant-..."
     (let ((secret (plist-get entry :secret)))
       (encode-coding-string (funcall secret) 'utf-8))))
 
-(defun nate-agent--request (messages tool-defs on-success on-error)
+(defun nate-agent--request (agent-buf messages tool-defs on-success on-error)
   "POST MESSAGES and TOOL-DEFS to the Anthropic API asynchronously.
 ON-SUCCESS is called with the parsed response alist.
-ON-ERROR is called with a description of the failure."
+ON-ERROR is called with a description of the failure.
+AGENT-BUF is used to store the last request/response for debugging."
   (let* ((url-request-method "POST")
          (url-request-extra-headers
           `(("x-api-key"         . ,(nate-agent--api-key))
@@ -99,7 +100,7 @@ ON-ERROR is called with a description of the failure."
 		'utf-8))
          (url-request-data
 	  body))
-    (with-current-buffer (get-buffer "*nate-agent*")
+    (with-current-buffer agent-buf
       (setq nate-agent--last-request body))
     (url-retrieve
      "https://api.anthropic.com/v1/messages"
@@ -118,7 +119,7 @@ ON-ERROR is called with a description of the failure."
 		 (let* ((response-string (buffer-substring-no-properties (point) (point-max)))
 			(json-object-type 'hash-table)
 			(body (json-read-from-string response-string)))
-		   (with-current-buffer (get-buffer "*nate-agent*")
+		   (with-current-buffer agent-buf
 		     (setq nate-agent--last-response response-string))
 		   (kill-buffer (current-buffer))
 		   (if-let ((api-err (gethash "error" body)))
@@ -190,13 +191,13 @@ of tool definitions is cached by the API across requests."
   (nate-agent--ui-set-status buf "thinking…")
   (nate-agent--ui-append buf "\n* Assistant\n")
   (nate-agent--request
+   buf
    (with-current-buffer buf (nate-agent--build-history))
    (nate-agent--tool-api-defs)
    (lambda (response) (nate-agent--handle-response buf response))
    (lambda (err-type err)
-     (nate-agent--ui-set-assistant-tag buf "error")
-     (nate-agent--ui-append buf (format "\n** Error: %s\n" err-type))
-     (nate-agent--ui-append-literal buf err)
+     (nate-agent--ui-set-assistant-tag buf "end_turn")
+     (nate-agent--ui-append-response buf (format "Error (%s):\n#+begin_example\n%s\n#+end_example" err-type (org-escape-code-in-string err)))
      (nate-agent--ui-ready buf))))
 
 (defun nate-agent--handle-response (buf response)
@@ -227,6 +228,8 @@ In needs-tool-execution state: tries to execute the next pending tool."
   (interactive)
   (unless (eq major-mode 'nate-agent-mode)
     (user-error "Not in agent buffer"))
+  (let ((default-directory (or (nate-agent--working-directory)
+                               default-directory)))
   (pcase (nate-agent--buffer-state)
     ('waiting-for-input
      (when (string-empty-p (nate-agent--current-input))
@@ -245,7 +248,7 @@ In needs-tool-execution state: tries to execute the next pending tool."
 	     (nate-agent--ui-write-tool-result (current-buffer) id result)
 	     (nate-agent--schedule-step (current-buffer))))))
     (state
-     (user-error "Cannot step in state: %s" state))))
+     (user-error "Cannot step in state: %s" state)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; UI Layer
@@ -375,24 +378,40 @@ become (***), keeping them nested under the ** Response heading."
         (string-trim (buffer-substring-no-properties (match-end 0) (point-max)))
       "")))
 
+(defun nate-agent--working-directory ()
+  "Return the WORKING_DIRECTORY property from the * Nate Agent Info heading."
+  (save-excursion
+    (goto-char (point-min))
+    (when (re-search-forward "^\\* Nate Agent Info" nil t)
+      (org-entry-get (point) "WORKING_DIRECTORY"))))
+
 ;;;###autoload
-(defun nate-agent ()
-  "Open (or switch to) the nate-agent conversation buffer."
-  (interactive)
-  (let ((buf (get-buffer-create "*nate-agent*")))
+(defun nate-agent (working-dir)
+  "Start a new agent session rooted at WORKING-DIR.
+Prompts for the working directory, defaulting to `default-directory'.
+Creates a fresh *nate-agent* buffer, inserts the * Nate Agent Info
+heading (with WORKING_DIRECTORY property), then the initial * User prompt."
+  (interactive
+   (list (read-directory-name "Agent working directory: " default-directory)))
+  (let ((buf (get-buffer-create (format "*nate-agent [%s]*" working-dir))))
     (with-current-buffer buf
       (unless (eq major-mode 'nate-agent-mode)
-        (nate-agent-mode)
-        (insert "* Nate Agent Info\n")
-        (insert (format "Model: %s  |  C-c C-c to send\n" nate-agent-model))
-        (insert "Tools: list_buffers, read_buffer, edit_buffer\n")
-        (nate-agent--ui-ready buf)))
+        (nate-agent-mode))
+      (when (= (buffer-size) 0)
+        (let ((dir (expand-file-name working-dir)))
+	  (insert "* Nate Agent Info\n")
+          (insert (format "Model: %s  |  C-c C-c to send\n" nate-agent-model))
+          (insert (format "Tools: %s\n" (mapconcat #'identity
+						   (hash-table-keys nate-agent--tool-registry)
+						   ", ")))
+          (save-excursion
+            (re-search-backward "^\\* Nate Agent Info" nil t)
+            (org-set-property "WORKING_DIRECTORY" dir))
+          (nate-agent--ui-ready (current-buffer)))))
     (pop-to-buffer buf)))
 
 (provide 'nate-agent)
 ;;; nate-agent.el ends here
 
 ;;;;; NOTES
-;; TODO-NEXT change diff interface so that C-c C-a is accept all hunks, and then some other key for accepting as-is
-;; TODO-NEXT
-;; 
+
