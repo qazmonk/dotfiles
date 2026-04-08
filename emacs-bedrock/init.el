@@ -289,8 +289,8 @@ If the new path's directories does not exist, create them."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(claude-code csv-mode htmlize inheritenv languagetool paredit
-		 rainbow-delimiters))
+   '(claude-code csv-mode god-mode htmlize inheritenv languagetool
+		 paredit rainbow-delimiters))
  '(package-vc-selected-packages
    '((claude-code :url "https://github.com/stevemolitor/claude-code.el")))
  '(safe-local-variable-values
