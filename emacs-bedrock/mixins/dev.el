@@ -120,7 +120,8 @@
   (setq conda-anaconda-home (expand-file-name "~/miniconda3"))
   (setq conda-env-home-directory (expand-file-name "~/miniconda3/envs"))
   :config
-  (conda-env-initialize-interactive-shells))
+  (conda-env-initialize-interactive-shells)
+  (conda-env-initialize-eshell))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

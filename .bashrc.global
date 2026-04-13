@@ -41,31 +41,6 @@ elif [ -f /etc/bash_completion ]; then
 fi
 
 # ------------------------------------------------------------------------------
-# Emacs vterm integration
-# ------------------------------------------------------------------------------
-vterm_printf() {
-    if [ -n "$TMUX" ] && { [ "${TERM%%-*}" = "tmux" ] || [ "${TERM%%-*}" = "screen" ]; }; then
-        printf "\ePtmux;\e\e]%s\007\e\\" "$1"
-    elif [ "${TERM%%-*}" = "screen" ]; then
-        printf "\eP\e]%s\007\e\\" "$1"
-    else
-        printf "\e]%s\e\\" "$1"
-    fi
-}
-
-if [[ "$INSIDE_EMACS" == "vterm" ]]; then
-    vterm_prompt_end() {
-        vterm_printf "51;A$(whoami)@$(hostname):$(pwd)"
-    }
-
-    # Source the official vterm shell integration if available
-    VTERM_BASH="${EMACS_VTERM_PATH}/etc/emacs-vterm-bash.sh"
-    if [ -f "$VTERM_BASH" ]; then
-        source "$VTERM_BASH"
-    fi
-fi
-
-# ------------------------------------------------------------------------------
 # Lazy conda
 # ------------------------------------------------------------------------------
 _lazy_conda_init() {
@@ -93,9 +68,84 @@ activate() { _lazy_conda_init; conda activate "$@"; }
 # ------------------------------------------------------------------------------
 # Starship prompt (must come after vterm setup)
 # ------------------------------------------------------------------------------
-eval "$(starship init bash)"
+# eval "$(starship init bash)"
 
-# Vterm directory tracking — must come after starship since starship overwrites PS1
+# ------------------------------------------------------------------------------
+# Git prompt
+# ------------------------------------------------------------------------------
+GIT_PS1_SHOWDIRTYSTATE=1
+GIT_PS1_SHOWUPSTREAM="auto"
+GIT_PS1_SHOWUNTRACKEDFILES=1
+if [ -f /usr/share/bash-completion/git-prompt.sh ]; then
+    source /usr/share/bash-completion/git-prompt.sh
+elif [ -f /usr/share/git-core/contrib/completion/git-prompt.sh ]; then
+    source /usr/share/git-core/contrib/completion/git-prompt.sh
+fi
+
+# ------------------------------------------------------------------------------
+# Prompt
+# ------------------------------------------------------------------------------
+__my_prompt() {
+    local exit=$?
+
+    # Colors
+    local reset='\[\e[0m\]'
+    local bold='\[\e[1m\]'
+    local cyan='\[\e[36m\]'
+    local yellow='\[\e[33m\]'
+    local green='\[\e[32m\]'
+    local red='\[\e[31m\]'
+    local magenta='\[\e[35m\]'
+    local blue='\[\e[34m\]'
+
+    local conda_part=""
+    if [[ -n "$CONDA_DEFAULT_ENV" ]]; then
+        conda_part=" (${magenta}🅒 ${CONDA_DEFAULT_ENV}${reset})"
+    fi
+
+    # Git info
+    local git_part=""
+    if declare -f __git_ps1 > /dev/null; then
+        git_part="($(__git_ps1 " ${green}on  %s${reset}"))"
+    fi
+
+    # Exit code — only show on failure
+    local exit_part=""
+    if [[ $exit -ne 0 ]]; then
+        exit_part=" $({red}✘${exit}${reset})"
+    fi
+
+    # Line 1: path  git  conda  exit
+    # Line 2: ❯
+    PS1="${yellow}${bold}\w${reset}${git_part}${conda_part}${exit_part}\n${cyan}❯${reset} "
+
+    # vterm: directory tracking + prompt location (must be last)
+    if [[ "$INSIDE_EMACS" == "vterm" ]]; then
+        PS1="${PS1}"'\[$(vterm_prompt_end)\]'
+    fi
+}
+
+PROMPT_COMMAND="__my_prompt"
+
+# ------------------------------------------------------------------------------
+# Emacs vterm integration
+# ------------------------------------------------------------------------------
+
 if [[ "$INSIDE_EMACS" == "vterm" ]]; then
-    PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND; }vterm_prompt_end"
+    # Source the official vterm shell integration if available
+    VTERM_BASH="${EMACS_VTERM_PATH}/etc/emacs-vterm-bash.sh"
+    if [ -f "$VTERM_BASH" ]; then
+        source "$VTERM_BASH"
+    fi
+    # Get vterm prompt tracking to play nice with starship
+    vterm_prompt_end(){
+	vterm_printf "51;A$(whoami)@$(hostname):$(pwd)"
+    }
+    __vterm_starship_hook() {
+        PS1="${PS1}"'\[$(vterm_prompt_end)\]'
+    }
+    starship_precmd_user_func="__vterm_starship_hook"
+    # nate-agent shell command hooks
+    __nate_begin() { true; }
+    __nate_end()   { vterm_cmd nate-agent-command-end "$1" "$2" "$3"; }
 fi

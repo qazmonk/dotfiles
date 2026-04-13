@@ -268,14 +268,16 @@ If the new path's directories does not exist, create them."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Better UNIX terminal 
-(load-file (expand-file-name "mixins/vterm.el" user-emacs-directory))
+(load-file (expand-file-name "mixins/vterm-config.el" user-emacs-directory))
 
 ;; AI, spooky
 (load-file (expand-file-name "mixins/llms.el" user-emacs-directory))
 
 ;; Custom LLM agent (learning project)
 (add-to-list 'load-path (expand-file-name "mixins" user-emacs-directory))
-(load-file (expand-file-name "mixins/nate-agent.el" user-emacs-directory))
+(require 'nate-agent)
+(require 'nate-agent-tools)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

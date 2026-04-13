@@ -13,7 +13,6 @@
 
 (require 'diff)
 (require 'nate-agent)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; nate-agent-review-mode
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -135,6 +134,116 @@ applies proposed hunks to the real file."
                   nil t))
       (display-buffer (get-buffer review-name)))))
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Vterm shell integration
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Requires the following in ~/.bashrc:
+;;
+;;   source /path/to/vterm/etc/emacs-vterm-bash.sh
+;;   __nate_end()   { vterm_cmd nate-agent-command-end "$1" "$2" "$3"; }
+;;
+;; The tool wraps every command as:
+;;   __nate_begin TOOL-ID AGENT-BUF-NAME; COMMAND; __nate_end TOOL-ID $? AGENT-BUF-NAME
+;;
+;; nate-agent-command-end is registered in vterm-eval-cmds and fires when
+;; the shell calls __nate_end.  It searches the vterm scrollback for the
+;; matching __nate_begin line and captures everything between them.
+
+(defun nate-agent--vterm-get-or-create (dir)
+  "Return the agent vterm buffer, creating it in DIR if needed."
+  (or (get-buffer "*nate-agent-shell*")
+      (let ((default-directory dir))
+        (vterm "*nate-agent-shell*"))))
+
+(defun nate-agent--vterm-command-end (tool-id exit-code agent-buf-name)
+  "Called by vterm when a nate-agent shell command finishes.
+Searches the vterm scrollback for the __nate_begin marker matching
+TOOL-ID, captures everything between it and the __nate_end marker,
+and writes the tool result into AGENT-BUF-NAME before resuming the loop."
+  (let ((agent-buf (get-buffer agent-buf-name)))
+    (unless agent-buf
+      (error "nate-agent-command-end: no buffer named %S" agent-buf-name))
+    (let* ((begin-marker (format "__nate_begin %s" tool-id))
+           (output
+            (save-excursion
+              (goto-char (point-max))
+              (let ((output-end (vterm--get-beginning-of-line (vterm--get-prompt-point)))) ; start of new prompt line = end of output
+                (if (not (search-backward begin-marker nil t))
+                    (format "(begin marker %S not found in vterm scrollback)" begin-marker)
+                  (goto-char (vterm--get-end-of-line)) ; skip fake wrap newlines to true end of command line
+                  (forward-char 1)                     ; step past real newline into output
+                  (buffer-substring-no-properties (point) output-end)))))
+           (clean  (ansi-color-filter-apply output))
+           (result (format "exit:%s\n%s" exit-code (string-trim clean))))
+      (nate-agent--ui-write-tool-result agent-buf tool-id result)
+      (nate-agent--schedule-step agent-buf))))
+
+;; Register the handler so vterm will call it when the shell emits __nate_end
+(add-to-list 'vterm-eval-cmds
+             '("nate-agent-command-end" nate-agent--vterm-command-end))
+
+(defun nate-agent--run-shell-command (input)
+  "Tool function for run_shell_command."
+  (let* ((command        (gethash "command" input))
+         (tool-id        (gethash "_tool_id" input))
+         (agent-buf      (gethash "_agent_buf" input))
+         (agent-buf-name (buffer-name agent-buf))
+         (dir            (with-current-buffer agent-buf
+                           (or (nate-agent--working-directory) default-directory)))
+         (vterm-buf      (nate-agent--vterm-get-or-create dir))
+         ;; Wrap command so begin/end markers with tool-id appear in scrollback
+         (wrapped        (format "__nate_begin %s \"%s\"; %s; __nate_end %s $? \"%s\""
+                                 tool-id agent-buf-name
+                                 command
+                                 tool-id agent-buf-name)))
+    (with-current-buffer vterm-buf
+      ;; Exit copy-mode if active: vterm--enter-copy-mode sends XOFF (C-s)
+      ;; to the pty, which pauses the shell and prevents our command from
+      ;; running until the user manually exits copy-mode.
+      (when vterm-copy-mode
+        (vterm-copy-mode -1))
+      (vterm-send-string wrapped)
+      (vterm-send-return))
+    (display-buffer vterm-buf)
+    nil))  ; async — result written by nate-agent--vterm-command-end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; (old eshell attempt, kept for reference)
+
+;; (defun nate-agent--eshell-get-or-create (dir)
+;;   "Return the agent eshell buffer, creating it in DIR if needed."
+;;   (or (get-buffer "*nate-agent-eshell*")
+;;       (let ((default-directory dir))
+;;         (let ((buf (eshell 'new)))
+;;           (with-current-buffer buf
+;;             (rename-buffer "*nate-agent-eshell*"))
+;;           buf))))
+
+;; (defun nate-agent--eshell-run (command eshell-buf output-buf agent-buf tool-id)
+;;   "Run COMMAND in ESHELL-BUF's environment, writing output to OUTPUT-BUF.
+;; When the command finishes, writes the tool result for TOOL-ID into
+;; AGENT-BUF and resumes the agent loop.  Async: returns immediately.
+;; OUTPUT-BUF's existence is used as the in-flight guard."
+;;   (with-current-buffer eshell-buf
+;;     (letrec ((handler
+;;               (lambda ()
+;;                 (remove-hook 'eshell-post-command-hook handler t)
+;;                 (let ((output (with-current-buffer output-buf
+;;                                 (string-trim (buffer-string)))))
+;;                   (kill-buffer output-buf)
+;;                   (nate-agent--ui-write-tool-result agent-buf tool-id output)
+;;                   (nate-agent--schedule-step agent-buf)))))
+;;       (add-hook 'eshell-post-command-hook handler nil t)
+;;       (eshell-eval-command
+;;        `(let ((eshell-current-handles
+;;                (eshell-create-handles ,output-buf 'insert))
+;;               (eshell-current-subjob-p nil))
+;;           ,(eshell-parse-command command nil t))
+;;        command))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Tool registrations
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -166,6 +275,20 @@ applies proposed hunks to the real file."
      (unless buf (error "No buffer named %S" name))
      (with-current-buffer buf (buffer-string)))))
 
+
+(nate-agent-register-tool
+ "open_file"
+ "Read file PATH into a buffer and return the buffer name.
+If a buffer exists visiting PATH, return that one. If PATH does not exist it is created."
+ '((type . "object")
+   (properties . ((path . ((type . "string")
+                           (description . "Absolute or ~ path of the file")))))
+   (required . ["path"]))
+ (lambda (input)
+   (let* ((path (expand-file-name (gethash "path" input)))
+          (buf  (find-file-noselect path)))
+     (buffer-name buf))))
+
 (nate-agent-register-tool
  "create_buffer"
  "Create a new file at the given path with the given content, and open it in Emacs.
@@ -190,15 +313,17 @@ The buffer is opened for you to review and save with C-x C-s."
  t)
 
 (nate-agent-register-tool
- "shell_command"
- "Run a shell command and return its output (stdout and stderr combined)."
+ "run_shell_command"
+ "Run a shell command in the persistent vterm shell buffer and return its output.
+The vterm buffer is created if it doesn't exist. Runs in your live shell
+environment, inheriting conda env, cwd, aliases, etc.
+Requires the __nate_end function to be defined in ~/.bashrc."
  '((type . "object")
-   (properties . ((command . ((type . "string") (description . "Shell command to run")))))
+   (properties . ((command . ((type . "string")
+                              (description . "Shell command to run")))))
    (required . ["command"]))
- (lambda (input)
-   (let ((command (gethash "command" input)))
-     (string-trim (shell-command-to-string command))))
- t)  ; destructive — prompts for confirmation
+ #'nate-agent--run-shell-command
+ t)
 
 (nate-agent-register-tool
  "lookup_symbol"

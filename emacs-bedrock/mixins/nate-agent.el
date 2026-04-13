@@ -21,7 +21,7 @@
 (require 'url)
 (require 'subr-x)
 (require 'nate-agent-history)
-(require 'nate-agent-tools)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Configuration
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -39,6 +39,13 @@
 
 (defvar-local nate-agent--last-response nil
   "Raw JSON string of the last API response, for debugging.")
+
+(defvar nate-agent-context-window 200000
+  "Input context window size in tokens. Used for the mode-line usage bar.")
+
+(defvar-local nate-agent--last-input-tokens nil
+  "Input token count from the most recent API response.")
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; API Layer
@@ -136,6 +143,9 @@ AGENT-BUF is used to store the last request/response for debugging."
 (defvar nate-agent--tool-registry (make-hash-table :test 'equal)
   "Maps tool name (string) to a plist with :fn, :destructive, :api-def.")
 
+(defconst nate-agent--empty-props (make-hash-table :test 'equal)
+  "Empty JSON object ({}) for tools that take no input properties.")
+
 (defun nate-agent-register-tool (name description schema fn &optional destructive)
   "Register a tool the model can call.
 NAME        — string identifier sent to the model.
@@ -188,7 +198,7 @@ of tool definitions is cached by the API across requests."
 
 (defun nate-agent--run (buf)
   "Send BUF's conversation history to the API and handle the response."
-  (nate-agent--ui-set-status buf "thinking…")
+  (nate-agent--ui-set-status buf 'waiting)
   (nate-agent--ui-append buf "\n* Assistant\n")
   (nate-agent--request
    buf
@@ -204,7 +214,14 @@ of tool definitions is cached by the API across requests."
   "Render API response into BUF; dispatch on stop_reason."
   (let* ((stop-reason  (gethash "stop_reason" response))
          (content      (gethash "content" response))   ; vector of content blocks
-         (content-list (append content nil)))            ; vector → list for dolist
+         (content-list (append content nil))            ; vector → list for dolist
+         (usage        (gethash "usage" response))
+         (in-tok       (when usage
+                        (+ (or (gethash "input_tokens"              usage) 0)
+                           (or (gethash "cache_read_input_tokens"    usage) 0)
+                           (or (gethash "cache_creation_input_tokens" usage) 0)))))
+    (when in-tok
+      (with-current-buffer buf (setq nate-agent--last-input-tokens in-tok)))
     (nate-agent--ui-set-assistant-tag buf stop-reason) ; now we have a response, update the tag
     (if (string= stop-reason "tool_use")
         (progn
@@ -220,6 +237,7 @@ of tool definitions is cached by the API across requests."
                   content-list ""))
       (nate-agent--ui-ready buf))))
 
+
 (defun nate-agent-step ()
   "Advance the agent by calling the API or executing tools.
 In waiting-for-inut state: reads the current * User text and send it.
@@ -230,41 +248,72 @@ In needs-tool-execution state: tries to execute the next pending tool."
     (user-error "Not in agent buffer"))
   (let ((default-directory (or (nate-agent--working-directory)
                                default-directory)))
-  (pcase (nate-agent--buffer-state)
-    ('waiting-for-input
-     (when (string-empty-p (nate-agent--current-input))
-       (user-error "Nothing to send"))
-     (nate-agent--run (current-buffer)))
-    ('needs-continuation
-     (nate-agent--run (current-buffer)))
-    (`(needs-tool-execution . ,props)
-     (let* ((id (plist-get props :id))
-	    (name (plist-get props :name))
-	    (input (plist-get props :input)))
-       (puthash "_tool_id" id input)
-       (puthash "_agent_buf" (current-buffer) input)
-       (if-let ((result (nate-agent--execute-tool name input)))
-	   (progn
-	     (nate-agent--ui-write-tool-result (current-buffer) id result)
-	     (nate-agent--schedule-step (current-buffer))))))
-    (state
-     (user-error "Cannot step in state: %s" state)))))
+    (pcase (nate-agent--buffer-state)
+      ('waiting-for-input
+       (when (string-empty-p (nate-agent--current-input))
+	 (user-error "Nothing to send"))
+       (nate-agent--run (current-buffer)))
+      ('needs-continuation
+       (nate-agent--run (current-buffer)))
+      (`(needs-tool-execution . ,props)
+       (nate-agent--ui-set-status (current-buffer) 'tool)
+       (let* ((id (plist-get props :id))
+	      (name (plist-get props :name))
+	      (input (plist-get props :input)))
+	 (puthash "_tool_id" id input)
+	 (puthash "_agent_buf" (current-buffer) input)
+	 (condition-case err
+	     (if-let ((result (nate-agent--execute-tool name input)))
+		 (progn
+		   (nate-agent--ui-write-tool-result (current-buffer) id result)
+		   (nate-agent--schedule-step (current-buffer))))
+	   ((user-error error)
+	    (nate-agent--ui-write-tool-result (current-buffer) id (format "%s" (cadr err)))
+	    (nate-agent--schedule-step (current-buffer))))))
+      (state
+       (user-error "Cannot step in state: %s" state)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; UI Layer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defvar-local nate-agent--history nil
-  "Conversation history: list of message alists, oldest first.")
+(defvar-local nate-agent--agent-status 'idle
+  "Buffer-local agent status for the mode-line. One of: idle, waiting, tool.")
 
 (defvar nate-agent-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c C-c") #'nate-agent-step)
     map))
 
+(defface nate-agent-tokens-low  '((t :inherit success :weight bold)) "< 50% context used.")
+(defface nate-agent-tokens-mid  '((t :inherit warning :weight bold)) "50-80% context used.")
+(defface nate-agent-tokens-high '((t :inherit error   :weight bold)) "> 80% context used.")
+
+(defun nate-agent--token-indicator (n)
+  "Return a propertized string showing N tokens vs `nate-agent-context-window'."
+  (let* ((pct  (round (* 100.0 (/ (float n) nate-agent-context-window))))
+         (face (cond ((>= pct 80) 'nate-agent-tokens-high)
+                     ((>= pct 50) 'nate-agent-tokens-mid)
+                     (t           'nate-agent-tokens-low)))
+         (str  (format "%dk/%dk(%d%%%%)" (/ n 1000)
+                       (/ nate-agent-context-window 1000) pct)))
+    `(:propertize ,str face ,face)))
+
+(defun nate-agent--mode-line-segment ()
+  (let ((status-construct (pcase nate-agent--agent-status
+		      ('waiting '(:propertize "waiting..." face warning))
+		      ('tool '(:propertize "tool..." face warning))
+		      ('idle "idle")
+		      (_ nil)))
+	(tok-construct (when nate-agent--last-input-tokens
+			 (nate-agent--token-indicator nate-agent--last-input-tokens))))
+    (list "[" status-construct " | " tok-construct "]")))
+
 (define-derived-mode nate-agent-mode org-mode "Agent"
   "Major mode for the nate-agent conversation buffer."
-  (setq nate-agent--history nil))
+  (setq-local mode-line-format
+              (append (default-value 'mode-line-format)
+                      '((:eval (nate-agent--mode-line-segment))))))
 
 (defun nate-agent--ui-append (buf text)
   "Append TEXT to the end of BUF. Returns the point at the start of the inserted text"
@@ -327,8 +376,7 @@ In needs-tool-execution state: tries to execute the next pending tool."
 	     (input  (gethash "input" block)))
 	(nate-agent--ui-append-tool-call buf name input id)))
      ((string= (gethash "type" block) "text")
-      (nate-agent--ui-append-thinking buf (gethash "text" block)))))
-  (nate-agent--ui-set-status buf nil))
+      (nate-agent--ui-append-thinking buf (gethash "text" block))))))
 
 (defun nate-agent--ui-append-response (buf text)
   "Render the model's final text response into BUF.
@@ -357,15 +405,16 @@ become (***), keeping them nested under the ** Response heading."
         (when (re-search-backward "^\\* Assistant" nil t)
           (org-set-tags (list tag)))))) 
 
-(defun nate-agent--ui-set-status (buf msg)
-  "Update the mode-line status for BUF.  Pass nil to clear."
+
+(defun nate-agent--ui-set-status (buf status)
+  "Update the local variables the mode-line in BUF uses for showing STATUS and last token count."
   (with-current-buffer buf
-    (setq mode-line-misc-info (when msg (concat "[" msg "] ")))
+    (setq nate-agent--agent-status status)
     (force-mode-line-update)))
 
 (defun nate-agent--ui-ready (buf)
   "Append a fresh User: prompt to BUF and clear the status."
-  (nate-agent--ui-set-status buf nil)
+  (nate-agent--ui-set-status buf 'idle)
   (with-current-buffer buf
     (goto-char (point-max))
     (insert "\n* User\n")))
@@ -414,4 +463,11 @@ heading (with WORKING_DIRECTORY property), then the initial * User prompt."
 ;;; nate-agent.el ends here
 
 ;;;;; NOTES
-
+;;; TODO- shell command doesn't seem to really work.
+;;; TODO cancel commands
+;;; TODO don't hide thinking comments and make them normal responses instead of examples
+;;; TODO fix thinking and token usage modeline modifications, make them readable on narrow phone screens
+;;; TODO Make tool calls show a short summary in the heading line (eg ** TOOL: read_buffer <buffer name>))
+;;; TODO when tool use is denied, ask for a reason
+;;; TODO add helper when a tool call is failing and won't write any result
+;;; TODO add a tool for grepping and filtering files to stop it running shell commands for that

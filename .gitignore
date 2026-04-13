@@ -32,3 +32,4 @@
 !*.gpg
 !systemd
 !systemd/*
+/emacs-bedrock/mixins/diff-mode-demo.el
