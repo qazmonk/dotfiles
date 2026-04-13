@@ -146,16 +146,19 @@ AGENT-BUF is used to store the last request/response for debugging."
 (defconst nate-agent--empty-props (make-hash-table :test 'equal)
   "Empty JSON object ({}) for tools that take no input properties.")
 
-(defun nate-agent-register-tool (name description schema fn &optional destructive)
+(defun nate-agent-register-tool (name description schema fn &optional destructive display-fn)
   "Register a tool the model can call.
 NAME        — string identifier sent to the model.
 DESCRIPTION — tells the model what the tool does.
 SCHEMA      — alist for the JSON Schema of the tool's inputs.
 FN          — called with the parsed input alist; must return a string.
-DESTRUCTIVE — if non-nil, prompt user before running."
+DESTRUCTIVE — if non-nil, require user approval before running.
+DISPLAY-FN  — called with input to produce the approval preview.
+               Returns either a string, or (content lang) for a src block."
   (puthash name
            `(:fn ,fn
              :destructive ,destructive
+             :display-fn ,display-fn
              :api-def ((name        . ,name)
                        (description . ,description)
                        (input_schema . ,schema)))
@@ -172,17 +175,70 @@ of tool definitions is cached by the API across requests."
             (list (append (car (last defs))
                           '((cache_control . ((type . "ephemeral")))))))))
 
-(defun nate-agent--execute-tool (name input)
-  "Execute tool NAME with INPUT alist.  Returns a result string."
-  (let ((tool (gethash name nate-agent--tool-registry)))
+(defun nate-agent--execute-tool (name input status)
+  "Execute tool NAME with INPUT alist and STATUS from the tool heading tags.
+For destructive tools: if STATUS is nil, call display-fn, write *** Display,
+stamp :pending_approval: and return nil to pause the loop.
+If STATUS is 'approved, run fn unconditionally.  Non-destructive tools always run."
+  (let* ((tool      (gethash name nate-agent--tool-registry))
+         (agent-buf (gethash "_agent_buf" input))
+         (id        (gethash "_tool_id" input)))
     (unless tool
       (error "Unknown tool requested by model: %s" name))
-    (when (plist-get tool :destructive)
-      (unless (y-or-n-p (format "Allow tool '%s'? " name))
-        (user-error "Declined tool '%s'" name)))
-    (condition-case err
-        (funcall (plist-get tool :fn) input)
-      (error (format "Tool error: %s" (error-message-string err))))))
+    (if (and (plist-get tool :destructive) (not (eq status 'approved)))
+	(progn
+         (nate-agent--ui-tag-tool agent-buf id '("pending_approval"))
+	 (pop-to-buffer agent-buf)
+	 (with-current-buffer agent-buf
+	   (nate-agent--ui-goto-tool agent-buf id))
+	 nil)
+      (condition-case err
+          (funcall (plist-get tool :fn) input)
+        (error (format "Tool error: %s" (error-message-string err)))))))
+
+(defun nate-agent-approve-tool ()
+  "Approve the pending_approval tool heading at or near point."
+  (interactive)
+  (unless (eq major-mode 'nate-agent-mode)
+    (user-error "Not in agent buffer"))
+  (save-excursion
+    (nate-agent--back-to-tool-heading)
+    (unless (member "pending_approval" (org-get-tags))
+      (user-error "Not on a pending_approval tool heading"))
+    (org-set-tags (list "approved")))
+  (nate-agent--schedule-step (current-buffer)))
+
+(defun nate-agent-decline-tool ()
+  "Decline the pending_approval tool heading at or near point."
+  (interactive)
+  (unless (eq major-mode 'nate-agent-mode)
+    (user-error "Not in agent buffer"))
+  (save-excursion
+    (nate-agent--back-to-tool-heading)
+    (unless (member "pending_approval" (org-get-tags))
+      (user-error "Not on a pending_approval tool heading"))
+    (let* ((id     (org-entry-get (point) "TOOL_ID"))
+           (reason (read-string "Reason (optional): "))
+           (result (if (string-empty-p reason)
+                       "Declined by user."
+                     (format "Declined by user: %s" reason))))
+      (org-set-tags nil)
+      (nate-agent--ui-write-tool-result (current-buffer) id result)))
+  (nate-agent--schedule-step (current-buffer)))
+
+(defun nate-agent-abort ()
+  "Decline all pending tools and return to idle."
+  (interactive)
+  (unless (eq major-mode 'nate-agent-mode)
+    (user-error "Not in agent buffer"))
+  (save-excursion
+    (goto-char (point-min))
+    (while (re-search-forward ":pending_approval:" nil t)
+      (org-back-to-heading t)
+      (let ((id (org-entry-get (point) "TOOL_ID")))
+        (org-set-tags nil)
+        (nate-agent--ui-write-tool-result (current-buffer) id "Aborted by user."))))
+  (nate-agent--ui-ready (current-buffer)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -257,13 +313,14 @@ In needs-tool-execution state: tries to execute the next pending tool."
        (nate-agent--run (current-buffer)))
       (`(needs-tool-execution . ,props)
        (nate-agent--ui-set-status (current-buffer) 'tool)
-       (let* ((id (plist-get props :id))
-	      (name (plist-get props :name))
-	      (input (plist-get props :input)))
+       (let* ((id     (plist-get props :id))
+	      (name   (plist-get props :name))
+	      (input  (plist-get props :input))
+	      (status (plist-get props :status)))
 	 (puthash "_tool_id" id input)
 	 (puthash "_agent_buf" (current-buffer) input)
 	 (condition-case err
-	     (if-let ((result (nate-agent--execute-tool name input)))
+	     (if-let ((result (nate-agent--execute-tool name input status)))
 		 (progn
 		   (nate-agent--ui-write-tool-result (current-buffer) id result)
 		   (nate-agent--schedule-step (current-buffer))))
@@ -272,152 +329,6 @@ In needs-tool-execution state: tries to execute the next pending tool."
 	    (nate-agent--schedule-step (current-buffer))))))
       (state
        (user-error "Cannot step in state: %s" state)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; UI Layer
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defvar-local nate-agent--agent-status 'idle
-  "Buffer-local agent status for the mode-line. One of: idle, waiting, tool.")
-
-(defvar nate-agent-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c C-c") #'nate-agent-step)
-    map))
-
-(defface nate-agent-tokens-low  '((t :inherit success :weight bold)) "< 50% context used.")
-(defface nate-agent-tokens-mid  '((t :inherit warning :weight bold)) "50-80% context used.")
-(defface nate-agent-tokens-high '((t :inherit error   :weight bold)) "> 80% context used.")
-
-(defun nate-agent--token-indicator (n)
-  "Return a propertized string showing N tokens vs `nate-agent-context-window'."
-  (let* ((pct  (round (* 100.0 (/ (float n) nate-agent-context-window))))
-         (face (cond ((>= pct 80) 'nate-agent-tokens-high)
-                     ((>= pct 50) 'nate-agent-tokens-mid)
-                     (t           'nate-agent-tokens-low)))
-         (str  (format "%dk/%dk(%d%%%%)" (/ n 1000)
-                       (/ nate-agent-context-window 1000) pct)))
-    `(:propertize ,str face ,face)))
-
-(defun nate-agent--mode-line-segment ()
-  (let ((status-construct (pcase nate-agent--agent-status
-		      ('waiting '(:propertize "waiting..." face warning))
-		      ('tool '(:propertize "tool..." face warning))
-		      ('idle "idle")
-		      (_ nil)))
-	(tok-construct (when nate-agent--last-input-tokens
-			 (nate-agent--token-indicator nate-agent--last-input-tokens))))
-    (list "[" status-construct " | " tok-construct "]")))
-
-(define-derived-mode nate-agent-mode org-mode "Agent"
-  "Major mode for the nate-agent conversation buffer."
-  (setq-local mode-line-format
-              (append (default-value 'mode-line-format)
-                      '((:eval (nate-agent--mode-line-segment))))))
-
-(defun nate-agent--ui-append (buf text)
-  "Append TEXT to the end of BUF. Returns the point at the start of the inserted text"
-  (with-current-buffer buf
-    (goto-char (point-max))
-    (insert text)))
-
-(defun nate-agent--ui-append-literal (buf text)
-  "Wrap text in an EXAMPLE block to prevent parsing and append."
-  (with-current-buffer buf
-    (goto-char (point-max))
-    (insert (format "#+begin_example\n%s\n#+end_example"
-		    (org-escape-code-in-string text)))))
-
-(defun nate-agent--ui-append-thinking (buf text)
-  "Render a thinking text block that came interspersed with tool calls into BUF."
-  (with-current-buffer buf
-    (goto-char (point-max))
-    (let ((start (point)))
-      (insert "** Thinking\n")
-      (nate-agent--ui-append-literal buf text)
-      (save-excursion
-	(goto-char start)
-	(org-fold-subtree t)))))
-
-(defun nate-agent--ui-append-tool-call (buf name input id)
-  "Render a tool call into BUF."
-  (with-current-buffer buf
-    (goto-char (point-max))
-    (insert "\n")
-    (let ((start (point-max)))
-      (insert (format "** Tool: %s\n" name))
-      (org-set-property "TOOL_NAME" name)
-      (org-set-property "TOOL_ID" id)
-      (goto-char (point-max))
-      (insert (format "*** Input\n#+begin_src json\n%s\n#+end_src\n" (json-encode input))))))
-
-(defun nate-agent--ui-write-tool-result (buf id result)
-  "Append *** Result under the ** Tool heading matching the id. Folds the tool subtree when done"
-  (with-current-buffer buf
-    (goto-char (point-max))
-    (unless (re-search-backward (concat ":TOOL_ID: +" (regexp-quote id)) nil t)
-      (error "No tool heading found for TOOL +ID %s" id))
-    (org-back-to-heading t)
-    (let ((subtree-start (point)))
-      (org-end-of-subtree t t)
-      (insert (format "*** Result\n#+begin_example\n%s\n#+end_example\n"
-		      (org-escape-code-in-string result)))
-      (save-excursion
-	(goto-char subtree-start)
-	(org-fold-subtree t)))))
-
-(defun nate-agent--ui-insert-tool-calls (buf content-list)
-  "Inserts tool_use blocks in CONTENT-LIST."
-  (dolist (block content-list) 
-    (cond
-     ((string= (gethash "type" block) "tool_use")
-      (let* ((id     (gethash "id" block))
-	     (name   (gethash "name" block))
-	     (input  (gethash "input" block)))
-	(nate-agent--ui-append-tool-call buf name input id)))
-     ((string= (gethash "type" block) "text")
-      (nate-agent--ui-append-thinking buf (gethash "text" block))))))
-
-(defun nate-agent--ui-append-response (buf text)
-  "Render the model's final text response into BUF.
-Any headings in TEXT are demoted so that top-level (*) headings
-become (***), keeping them nested under the ** Response heading."
-  (nate-agent--ui-append buf (format "** Response\n"))
-  (let ((response-start (with-current-buffer buf (point-max))))
-    (nate-agent--ui-append buf (format "%s" text))
-    (with-current-buffer buf
-      (save-excursion
-        (save-restriction
-          (narrow-to-region response-start (point-max))
-	  
-	  (goto-char (point-min))
-	  (while (re-search-forward org-heading-regexp nil t)
-	    (beginning-of-line)
-	    (while (< (org-current-level) 3)
-	      (org-demote-subtree))
-	    (org-end-of-subtree t t)))))))
-
-(defun nate-agent--ui-set-assistant-tag (buf tag)
-    "Set TAG on the most recent * Assistant heading in BUF."
-    (with-current-buffer buf
-      (save-excursion
-        (goto-char (point-max))
-        (when (re-search-backward "^\\* Assistant" nil t)
-          (org-set-tags (list tag)))))) 
-
-
-(defun nate-agent--ui-set-status (buf status)
-  "Update the local variables the mode-line in BUF uses for showing STATUS and last token count."
-  (with-current-buffer buf
-    (setq nate-agent--agent-status status)
-    (force-mode-line-update)))
-
-(defun nate-agent--ui-ready (buf)
-  "Append a fresh User: prompt to BUF and clear the status."
-  (nate-agent--ui-set-status buf 'idle)
-  (with-current-buffer buf
-    (goto-char (point-max))
-    (insert "\n* User\n")))
 
 (defun nate-agent--current-input ()
   "Extract user input: everything after the last user heading in the buffer."
@@ -459,15 +370,54 @@ heading (with WORKING_DIRECTORY property), then the initial * User prompt."
           (nate-agent--ui-ready (current-buffer)))))
     (pop-to-buffer buf)))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Mode definition
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar nate-agent-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-c") #'nate-agent-step)
+    (define-key map (kbd "C-c C-a") #'nate-agent-approve-tool)
+    (define-key map (kbd "C-c C-k") #'nate-agent-decline-tool)
+    (define-key map (kbd "C-c C-q") #'nate-agent-abort)
+    map))
+
+(define-derived-mode nate-agent-mode org-mode "Agent"
+  "Major mode for the nate-agent conversation buffer."
+  ;; Put the agent status up front so it's visible on narrow terminals.
+  ;; Also strip rarely-useful clutter (mule-info, frame-id, misc-info, etc.).
+  (setq-local mode-line-format
+              (list
+               "%e"
+               ;; Window number (winum)
+               '(:eval (format winum-format (winum-get-number-string)))
+               " "
+               ;; Agent status — front and centre
+               '(:eval (nate-agent--mode-line-segment))
+               " "
+               ;; Modified / read-only flag
+               '(:propertize "%*" face bold)
+               " "
+               ;; Buffer name
+               'mode-line-buffer-identification
+               "  "
+               ;; Line / column
+               'mode-line-position
+               ;; VC branch
+               '(vc-mode vc-mode)
+               "  "
+               ;; Major mode
+               'mode-line-modes
+               'mode-line-end-spaces)))
+
 (provide 'nate-agent)
 ;;; nate-agent.el ends here
 
 ;;;;; NOTES
-;;; TODO- shell command doesn't seem to really work.
-;;; TODO cancel commands
-;;; TODO don't hide thinking comments and make them normal responses instead of examples
-;;; TODO fix thinking and token usage modeline modifications, make them readable on narrow phone screens
-;;; TODO Make tool calls show a short summary in the heading line (eg ** TOOL: read_buffer <buffer name>))
-;;; TODO when tool use is denied, ask for a reason
-;;; TODO add helper when a tool call is failing and won't write any result
-;;; TODO add a tool for grepping and filtering files to stop it running shell commands for that
+;;; TODO cancel: interrupt in-flight API requests and running tool calls
+;;; TODO don't fold thinking blocks; render them as normal response text
+;;; TODO make tool call headings show a short input summary (eg ** Tool: read_buffer "init.el")
+;;; TODO add a guard / error message when a tool call stalls without writing a result
+;;; TODO add web search
+;;; TODO unify ui and history — they are inverses of the same serialisation process

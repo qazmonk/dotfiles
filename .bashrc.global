@@ -112,7 +112,7 @@ __my_prompt() {
     # Exit code — only show on failure
     local exit_part=""
     if [[ $exit -ne 0 ]]; then
-        exit_part=" $({red}✘${exit}${reset})"
+        exit_part="(${red}${exit}${reset})"
     fi
 
     # Line 1: path  git  conda  exit

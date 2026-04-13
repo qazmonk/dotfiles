@@ -1,140 +1,8 @@
 ;;; nate-agent-tools.el --- Tool implementations for nate-agent  -*- lexical-binding: t -*-
 
-;;; Commentary:
-;; Tool registrations and supporting UI for nate-agent.
-;; The edit_buffer tool is async: it opens an nate-agent-review-mode buffer
-;; and returns nil, pausing the agent loop until the user accepts or rejects.
-;;
-;; Review buffer diff direction: --- current  +++ proposed
-;; This means C-c C-a applies a proposed hunk to the current file.
-;; Red (-) = what is currently in the file.  Green (+) = what the agent proposes.
-
 ;;; Code:
 
-(require 'diff)
 (require 'nate-agent)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; nate-agent-review-mode
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defvar nate-agent-review-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c C-c") #'nate-agent-edit-accept-all)
-    (define-key map (kbd "C-c C-p") #'nate-agent-edit-accept)
-    (define-key map (kbd "C-c C-k") #'nate-agent-edit-reject)
-    map)
-  "Keymap for nate-agent-review-mode.")
-
-(define-derived-mode nate-agent-review-mode diff-mode "Agent-Review"
-  "Major mode for reviewing proposed edits from nate-agent.
-Derives from diff-mode.  The diff shows proposed changes (---) vs the
-current file (+++).
-
-  Red   (-) lines = what the agent proposes to add
-  Green (+) lines = what is currently in the file
-
-\\[diff-apply-hunk]   apply hunk at point to the file
-\\[nate-agent-edit-accept]   accept — write Result and close (file unchanged until you save)
-\\[nate-agent-edit-reject]   reject — tell the agent the edit was not applied; buffer unchanged"
-  (setq header-line-format
-        (substitute-command-keys
-         "\\[nate-agent-edit-accept-all] accept all edit \\[nate-agent-edit-accept] accept whichever edits were manually applied \\[nate-agent-edit-reject] reject")))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Buffer-local state (set by nate-agent--setup-edit-review)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defvar-local nate-agent--review-agent-buf  nil "The *nate-agent* buffer.")
-(defvar-local nate-agent--review-tool-id    nil "Tool ID for writing the Result.")
-(defvar-local nate-agent--review-target-buf nil "Buffer being edited.")
-(defvar-local nate-agent--review-prop-file  nil "Temp file holding proposed content.")
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Accept / reject
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun nate-agent-edit-accept-all ()
-  "Apply ALL hunks in the review buffer to the target, then accept.
-Equivalent to running \\[diff-apply-hunk] on every hunk and then
-calling \\[nate-agent-edit-accept].  The target buffer is saved."
-  (interactive)
-  (diff-apply-buffer)
-  (nate-agent-edit-accept))
-
-(defun nate-agent-edit-accept ()
-  "Accept as-is: write a success Result and close the review buffer.
-Any hunks you applied manually with \\[diff-apply-hunk] are already in
-the target buffer.  Use \\[nate-agent-edit-accept-all] to apply all
-hunks automatically before accepting."
-  (interactive)
-  (let ((agent-buf nate-agent--review-agent-buf)
-        (tool-id   nate-agent--review-tool-id)
-        (target    nate-agent--review-target-buf))
-    (kill-buffer (current-buffer))
-    (with-current-buffer target (save-buffer))
-    (nate-agent--ui-write-tool-result agent-buf tool-id
-      (format "Edit partially accepted. %s updated." (buffer-name target)))
-    (nate-agent--schedule-step agent-buf)
-    (switch-to-buffer agent-buf)))
-
-(defun nate-agent-edit-reject ()
-  "Reject the edit: write a rejection Result and close the review buffer.
-Prompts for an optional comment to explain the rejection to the agent.
-The target buffer is left as-is — you remain in control of its contents."
-  (interactive)
-  (let* ((agent-buf nate-agent--review-agent-buf)
-         (tool-id   nate-agent--review-tool-id)
-         (comment   (read-string "Rejection comment (optional): "))
-         (result    (if (string-empty-p comment)
-                        "Edit rejected by user."
-                      (format "Edit rejected by user: %s" comment))))
-    (kill-buffer (current-buffer))
-    (nate-agent--ui-write-tool-result agent-buf tool-id result)
-    (nate-agent--schedule-step agent-buf)
-    (switch-to-buffer agent-buf)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Review buffer setup
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun nate-agent--setup-edit-review (agent-buf tool-id target-buf edits)
-  "Create and display a review buffer for proposed EDITS to TARGET-BUF.
-EDITS is a list of (OLD-STR . NEW-STR) pairs applied in order.
-Diffs proposed (---) vs current file (+++) so that \\[diff-apply-hunk]
-applies proposed hunks to the real file."
-  (unless (buffer-file-name target-buf)
-    (error "edit_buffer requires a file-backed buffer; %s has no file"
-           (buffer-name target-buf)))
-  (let* ((review-name (format "*nate-agent-edit:%s*" tool-id))
-         (prop-file   (make-temp-file "nate-agent-edit-")))
-    ;; Build proposed content in a temp file
-    (with-temp-file prop-file
-      (insert (with-current-buffer target-buf (buffer-string)))
-      (dolist (edit edits)
-	(let ((old-str (car edit))
-	      (new-str (cdr edit)))
-	  (goto-char (point-min))
-	  (unless (search-forward old-str nil t)
-            (delete-file prop-file)
-            (error "old_string not found in %s: %S" (buffer-name target-buf) old-str))
-	  (replace-match new-str t t))))
-    (let ((diff-buf (diff-no-select (buffer-file-name target-buf) prop-file nil t)))
-      (with-current-buffer diff-buf
-        (nate-agent-review-mode)
-        (rename-buffer review-name t)
-        (setq-local nate-agent--review-agent-buf  agent-buf)
-        (setq-local nate-agent--review-tool-id    tool-id)
-        (setq-local nate-agent--review-target-buf target-buf)
-        (setq-local nate-agent--review-prop-file  prop-file)
-	(setq-local diff-jump-to-old-file t)
-        (add-hook 'kill-buffer-hook
-                  (lambda ()
-                    (when (file-exists-p nate-agent--review-prop-file)
-                      (delete-file nate-agent--review-prop-file)))
-                  nil t))
-      (display-buffer (get-buffer review-name)))))
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Vterm shell integration
@@ -310,7 +178,9 @@ The buffer is opened for you to review and save with C-x C-s."
          (insert content))
        (display-buffer buf)
        (format "Created %s — review and save with C-x C-s." path))))
- t)
+ t
+ (lambda (input)
+   (gethash "content" input)))
 
 (nate-agent-register-tool
  "run_shell_command"
@@ -323,7 +193,9 @@ Requires the __nate_end function to be defined in ~/.bashrc."
                               (description . "Shell command to run")))))
    (required . ["command"]))
  #'nate-agent--run-shell-command
- t)
+ t
+ (lambda (input)
+   (list (gethash "command" input) "sh")))
 
 (nate-agent-register-tool
  "lookup_symbol"
@@ -366,16 +238,125 @@ the agent pauses until you accept (C-c C-a / C-c C-c) or reject (C-c C-k)."
           (tool-id   (gethash "_tool_id" input))
           (agent-buf (gethash "_agent_buf" input))
           (target    (get-buffer buf-name))
-          (review    (format "*nate-agent-edit:%s*" tool-id))
           (edits     (mapcar (lambda (e)
                                (cons (gethash "old_string" e)
                                      (gethash "new_string" e)))
                              edits-vec)))
      (unless target (error "No buffer named %S" buf-name))
-     (unless (get-buffer review)
-       (nate-agent--setup-edit-review agent-buf tool-id target edits))
-     (display-buffer (get-buffer review))
-     nil)))   ; always async — Result is written by accept/reject
+     (with-current-buffer target
+       (dolist (edit edits)
+         (goto-char (point-min))
+         (unless (search-forward (car edit) nil t)
+           (error "old_string not found in %s: %S" buf-name (car edit)))
+         (replace-match (cdr edit) t t))
+       (save-buffer))
+     (format "Edit accepted. %s updated." buf-name)))
+ t
+ (lambda (input)
+  (let* ((buf-name  (gethash "name" input))
+         (edits-vec (gethash "edits" input))
+         (target    (get-buffer buf-name))
+         (edits     (mapcar (lambda (e)
+                              (cons (gethash "old_string" e)
+                                    (gethash "new_string" e)))
+                            edits-vec))
+         (current-file (buffer-file-name target))
+         (prop-file    (make-temp-file "nate-agent-edit-")))
+    (with-temp-file prop-file
+      (insert (with-current-buffer target (buffer-string)))
+      (dolist (edit edits)
+        (goto-char (point-min))
+        (unless (search-forward (car edit) nil t)
+          (delete-file prop-file)
+          (error "old_string not found in %s: %S" buf-name (car edit)))
+        (replace-match (cdr edit) t t)))
+    (let ((diff (shell-command-to-string
+                 (format "diff -u %s %s"
+                         (shell-quote-argument current-file)
+                         (shell-quote-argument prop-file)))))
+      (delete-file prop-file)
+      (list diff "diff")))))   
+
+(nate-agent-register-tool
+ "get_buffer_local_variable"
+ "Return the value of a buffer-local variable in a named buffer.
+Useful for inspecting mode-line-format, major-mode, local settings, etc.
+Returns the printed representation of the value."
+ '((type . "object")
+   (properties . ((buffer . ((type . "string") (description . "Buffer name")))
+                  (variable . ((type . "string") (description . "Variable name")))))
+   (required . ["buffer" "variable"]))
+ (lambda (input)
+   (let* ((buf-name (gethash "buffer" input))
+          (var-name (gethash "variable" input))
+          (buf      (get-buffer buf-name))
+          (sym      (intern-soft var-name)))
+     (unless buf (error "No buffer named %S" buf-name))
+     (unless sym (error "No symbol found for %S" var-name))
+     (prin1-to-string (buffer-local-value sym buf)))))
+
+(nate-agent-register-tool
+ "search_buffer"
+ "Search an open buffer for lines matching a regexp.
+Returns all matching lines with their line numbers.
+Use this instead of grep/shell commands when the buffer is already open in Emacs."
+ '((type . "object")
+   (properties . ((name   . ((type . "string") (description . "Buffer name")))
+                  (regexp . ((type . "string") (description . "Regexp to search for")))))
+   (required . ["name" "regexp"]))
+ (lambda (input)
+   (let* ((buf-name (gethash "name" input))
+          (regexp   (gethash "regexp" input))
+          (buf      (get-buffer buf-name))
+          (results  '()))
+     (unless buf (error "No buffer named %S" buf-name))
+     (with-current-buffer buf
+       (save-excursion
+         (goto-char (point-min))
+         (while (re-search-forward regexp nil t)
+           (push (format "%d: %s"
+                         (line-number-at-pos)
+                         (buffer-substring-no-properties
+                          (line-beginning-position)
+                          (line-end-position)))
+                 results)
+           (forward-line 1))))
+     (if results
+         (mapconcat #'identity (nreverse results) "\n")
+       (format "No matches for %S in %s" regexp buf-name)))))
+
+(nate-agent-register-tool
+ "search_files"
+ "Search for a pattern in files on disk using ripgrep (rg).
+Use this to search files that may not be open in Emacs.
+Use search_buffer instead when the buffer is already open."
+ '((type . "object")
+   (properties
+    . ((pattern      . ((type . "string")
+                        (description . "Pattern to search for (regexp by default)")))
+       (path        . ((type . "string")
+                       (description . "File or directory to search. Defaults to the agent working directory.")))
+       (glob        . ((type . "string")
+                       (description . "Optional filename glob to restrict search, e.g. \"*.el\" or \"*.py\"")))
+       (fixed_strings . ((type . "boolean")
+                         (description . "If true, treat pattern as a literal string instead of a regexp")))))
+   (required . ["pattern"]))
+ (lambda (input)
+   (let* ((pattern (gethash "pattern" input))
+          (path    (expand-file-name
+                    (or (gethash "path" input) ".")))
+          (glob    (gethash "glob" input))
+          (fixed   (gethash "fixed_strings" input))
+          (args    (concat "rg --line-number --with-filename --color never "
+                           (when fixed "-F ")
+                           (when glob (format "-g %s " (shell-quote-argument glob)))
+                           (shell-quote-argument pattern)
+                           " "
+                           (shell-quote-argument path)))
+          (output  (shell-command-to-string args)))
+     (if (string-empty-p output)
+         (format "No matches for %S in %s" pattern path)
+       (string-trim-right output)))))
 
 (provide 'nate-agent-tools)
 ;;; nate-agent-tools.el ends here

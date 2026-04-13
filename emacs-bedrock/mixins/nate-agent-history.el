@@ -78,16 +78,21 @@
               (org-element-contents h)))
 
 (defun nate-agent--tool-properties (tool)
-  "Get the properties and input of a '** Tool:' heading <tool>. 
-Returns a plist of (:id :name :input)."
+  "Get the properties and input of a '** Tool:' heading <tool>.
+Returns a plist of (:id :name :input :status).
+Status is 'pending, 'approved, or nil (non-destructive, run immediately)."
   (let* ((pos    (org-element-property :begin tool))
          (id     (org-entry-get pos "TOOL_ID"))
          (name   (org-entry-get pos "TOOL_NAME"))
+         (tags   (org-element-property :tags tool))
+         (status (cond ((member "pending_approval" tags) 'pending)
+                       ((member "approved"         tags) 'approved)
+                       (t                               nil)))
 	 (inp-h  (nate-agent--find-child-heading tool "Input"))
          (input  (when inp-h
 		   (let ((json-object-type 'hash-table))
                      (json-read-from-string (nate-agent--child-src inp-h))))))
-    `(:id ,id :name ,name :input ,input)))
+    `(:id ,id :name ,name :input ,input :status ,status)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -97,7 +102,7 @@ Returns a plist of (:id :name :input)."
 (defun nate-agent--parse-tool-heading (h)
   "Parse a '** Tool:' heading H.
 Returns (use-block . result-or-nil)."
-  (cl-destructuring-bind (&key id name input) (nate-agent--tool-properties h)
+  (cl-destructuring-bind (&key id name input status) (nate-agent--tool-properties h)
     (let* ((res-h  (nate-agent--find-child-heading h "Result"))
            (result (when res-h (nate-agent--child-example res-h))))
       (cons `((type . "tool_use") (id . ,id) (name . ,name) (input . ,input))
