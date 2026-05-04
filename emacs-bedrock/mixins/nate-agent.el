@@ -32,7 +32,14 @@
 (defvar nate-agent-max-tokens 8096
   "Maximum tokens for model responses.")
 
-(defvar nate-agent--system-prompt "You are a helpful assistant running inside Emacs. Format all responses using org-mode syntax rather than markdown. Use * for headings, -for lists, ~code~ for inline code, and #+begin_src / #+end_src for code blocks. When proposing edits, you MUST batch all independent tool calls into a single response rather than sequential edit then read. Before emitting any tool call, check whether there are other tool calls you could emit at the same time. If yes, emit them all together. Do not emit a tool call, wait for its result, and then emit another tool call that did not depend on that result. This harness is actively in development by the user so suggest new tools as they come up.")
+(defvar nate-agent--system-prompt "You are a helpful assistant running inside Emacs. Format all responses using org-mode syntax rather than markdown. Use * for headings, -for lists, ~code~ for inline code, and #+begin_src / #+end_src for code blocks. When proposing edits, you MUST batch all independent tool calls into a single response rather than sequential edit then read. Before emitting any tool call, check whether there are other tool calls you could emit at the same time. If yes, emit them all together. Do not emit a tool call, wait for its result, and then emit another tool call that did not depend on that result. This harness is actively in development by the user so suggest new tools as they come up.
+
+Tool preference order — always use the highest-priority applicable tool:
+1. search_buffer / read_buffer / list_buffers / get_buffer_local_variable — for any buffer already open in Emacs.
+2. open_file then read_buffer / search_buffer — to read a file from disk.
+3. find_files — to explore the filesystem and discover available files; start shallow and drill down.
+4. grep_files — to rg across files on disk that are not yet open. Only use after finding relevant files using find_files.
+5. run_shell_command — LAST RESORT ONLY. Do not use shell commands to read files, search code, or explore the filesystem; the dedicated tools above are safer and faster. Reserve run_shell_command for tasks that genuinely require a running process (e.g. building, testing, git operations, or Python execution).")
 
 (defvar-local nate-agent--last-request nil
   "Raw JSON string of the last API request, for debugging.")
@@ -357,6 +364,7 @@ heading (with WORKING_DIRECTORY property), then the initial * User prompt."
     (with-current-buffer buf
       (unless (eq major-mode 'nate-agent-mode)
         (nate-agent-mode))
+      (setq-local default-directory working-dir)
       (when (= (buffer-size) 0)
         (let ((dir (expand-file-name working-dir)))
 	  (insert "* Nate Agent Info\n")
@@ -385,6 +393,10 @@ heading (with WORKING_DIRECTORY property), then the initial * User prompt."
 
 (define-derived-mode nate-agent-mode org-mode "Agent"
   "Major mode for the nate-agent conversation buffer."
+
+  ;; Set the working directory to the agent dir, not the file location
+  (setq-local default-directory  (nate-agent--working-directory))
+    
   ;; Put the agent status up front so it's visible on narrow terminals.
   ;; Also strip rarely-useful clutter (mule-info, frame-id, misc-info, etc.).
   (setq-local mode-line-format
@@ -418,6 +430,13 @@ heading (with WORKING_DIRECTORY property), then the initial * User prompt."
 ;;; TODO cancel: interrupt in-flight API requests and running tool calls
 ;;; TODO don't fold thinking blocks; render them as normal response text
 ;;; TODO make tool call headings show a short input summary (eg ** Tool: read_buffer "init.el")
-;;; TODO add a guard / error message when a tool call stalls without writing a result
+;;; TODO add an interactive funcstion for when a tool call stalls without writing a result
 ;;; TODO add web search
 ;;; TODO unify ui and history — they are inverses of the same serialisation process
+;;; TODO switch to open router for api
+;;; TODO improve token use tracking. not just last request or at least break down into cached, input, ouput etc. Maybe store running totals of usage?
+;;; TODO get rid of model global state, read from header line
+;;; TODO fix edit that fail because the old string isn't found. Currently it dumps a huge lisp backtrace.
+;;; TODO fix shell command, sometimes the output starts before the whole begin/end line is fully written to the terminal. I think this happens when the command string contrains newlines. I think it only happens on slow commands. Change to a new approach
+;;; TODO fold input block for tools needing approval.
+;;; TODO for create_buffer, guess src mode from filename to display.

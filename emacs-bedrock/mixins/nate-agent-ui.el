@@ -130,13 +130,16 @@
 	     (tool (gethash name nate-agent--tool-registry)))
 	(unless tool
 	  (error "Unknown tool requested by model: %s" name))
-	(nate-agent--ui-append-tool-call buf name input id)	
-	(let* ((display-fn (plist-get tool :display-fn))
-               (display    (when display-fn (funcall display-fn input)))
-               (content    (if (consp display) (car display) display))
-               (lang       (when (consp display) (cadr display))))
-          (when content
-            (nate-agent--ui-write-display buf id content lang)))))
+	(nate-agent--ui-append-tool-call buf name input id)
+	(condition-case err
+	 (let* ((display-fn (plist-get tool :display-fn))
+		(display    (when display-fn (funcall display-fn input)))
+		(content    (if (consp display) (car display) display))
+		(lang       (when (consp display) (cadr display))))
+           (when content
+             (nate-agent--ui-write-display buf id content lang)))
+	 (error
+	  (nate-agent--ui-write-tool-result buf id "Tool call failed, invalid arguments")))))
      ((string= (gethash "type" block) "text")
       (nate-agent--ui-append-thinking buf (gethash "text" block))))))
 

@@ -187,7 +187,12 @@ The buffer is opened for you to review and save with C-x C-s."
  "Run a shell command in the persistent vterm shell buffer and return its output.
 The vterm buffer is created if it doesn't exist. Runs in your live shell
 environment, inheriting conda env, cwd, aliases, etc.
-Requires the __nate_end function to be defined in ~/.bashrc."
+Requires the __nate_end function to be defined in ~/.bashrc.
+
+IMPORTANT: This is a last-resort tool. Prefer the dedicated Emacs tools for
+common tasks: use find_files to look for non-open files, use grep_files to search for strings within a directory, open_file+read_buffer to read files,
+search_buffer to search open buffers. Only use run_shell_command for tasks
+that genuinely require a running process (build, test, git, execute code, etc.)."
  '((type . "object")
    (properties . ((command . ((type . "string")
                               (description . "Shell command to run")))))
@@ -314,7 +319,7 @@ Use this instead of grep/shell commands when the buffer is already open in Emacs
        (save-excursion
          (goto-char (point-min))
          (while (re-search-forward regexp nil t)
-           (push (format "%d: %s"
+           (push (format "%d: %s"p
                          (line-number-at-pos)
                          (buffer-substring-no-properties
                           (line-beginning-position)
@@ -326,10 +331,38 @@ Use this instead of grep/shell commands when the buffer is already open in Emacs
        (format "No matches for %S in %s" regexp buf-name)))))
 
 (nate-agent-register-tool
- "search_files"
+ "find_files"
+ "List files in a directory using (rg --files), respecting .gitignore.
+Use this to explore the filesystem and discover what files are available.
+Prefer this over run_shell_command or grep_files for any ls/find/tree-style exploration.
+Start with a shallow max_depth (default 2) and drill into subdirectories as needed."
+ '((type . "object")
+   (properties . ((path      . ((type . "string")
+				(description . "Directory to list. Defaults to the agent working directory.")))
+		  (glob      . ((type . "string")
+				(description . "Optional filename glob to restrict results, e.g. \"*.el\" or \"*.py\"")))
+		  (max_depth . ((type . "integer")
+				(description . "Maximum directory depth to recurse (default 2). Increase to explore deeper subtrees.")))))
+   (required . []))
+ (lambda (input)
+   (let* ((path      (expand-file-name (or (gethash "path" input) ".")))
+          (glob      (gethash "glob" input))
+          (max-depth (or (gethash "max_depth" input) 2))
+          (args      (concat "rg --files --color never "
+                             (format "--max-depth %d " max-depth)
+                             (when glob (format "-g %s " (shell-quote-argument glob)))
+                             (shell-quote-argument path)))
+          (output    (shell-command-to-string args)))
+     (if (string-empty-p output)
+         (format "No files found in %s" path)
+       (string-trim-right output)))))
+
+(nate-agent-register-tool
+ "grep_files"
  "Search for a pattern in files on disk using ripgrep (rg).
 Use this to search files that may not be open in Emacs.
-Use search_buffer instead when the buffer is already open."
+Use search_buffer instead when the buffer is already open.
+Prefer this over run_shell_command for any grep/find/rg codebase exploration."
  '((type . "object")
    (properties
     . ((pattern      . ((type . "string")
@@ -339,7 +372,9 @@ Use search_buffer instead when the buffer is already open."
        (glob        . ((type . "string")
                        (description . "Optional filename glob to restrict search, e.g. \"*.el\" or \"*.py\"")))
        (fixed_strings . ((type . "boolean")
-                         (description . "If true, treat pattern as a literal string instead of a regexp")))))
+                         (description . "If true, treat pattern as a literal string instead of a regexp")))
+       (context_lines . ((type . "integer")
+                         (description . "Lines of context before and after each match (like rg -C N). Use when you need surrounding text to build a unique old_string for edit_buffer.")))))
    (required . ["pattern"]))
  (lambda (input)
    (let* ((pattern (gethash "pattern" input))
@@ -347,8 +382,10 @@ Use search_buffer instead when the buffer is already open."
                     (or (gethash "path" input) ".")))
           (glob    (gethash "glob" input))
           (fixed   (gethash "fixed_strings" input))
+          (ctx     (gethash "context_lines" input))
           (args    (concat "rg --line-number --with-filename --color never "
                            (when fixed "-F ")
+                           (when (and ctx (> ctx 0)) (format "-C %d " ctx))
                            (when glob (format "-g %s " (shell-quote-argument glob)))
                            (shell-quote-argument pattern)
                            " "

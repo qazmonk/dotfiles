@@ -277,6 +277,8 @@ If the new path's directories does not exist, create them."
 (add-to-list 'load-path (expand-file-name "mixins" user-emacs-directory))
 (require 'nate-agent)
 (require 'nate-agent-tools)
+(require 'nate-agent-ui)
+(require 'nate-agent-history)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
