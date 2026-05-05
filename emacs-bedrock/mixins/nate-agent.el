@@ -176,8 +176,14 @@ DISPLAY-FN  — called with input to produce the approval preview.
 
 (defun nate-agent--tool-api-defs ()
   "Return all registered tools as a list of alists for the request body.
-Each tool is wrapped in the OpenRouter/OpenAI function tool format."
+Each tool is wrapped in the OpenRouter/OpenAI function tool format.
+Also includes the openrouter:web_search server tool."
   (let (defs)
+    ;; Add web search server tool
+    (push '((type . "openrouter:web_search")
+            (parameters . ((max_results . 5))))
+          defs)
+    ;; Add user-registered function tools
     (maphash (lambda (_name tool)
                (let ((api-def (plist-get tool :api-def)))
                  (push `((type     . "function")
@@ -282,7 +288,8 @@ If STATUS is 'approved, run fn unconditionally.  Non-destructive tools always ru
 
 
 (defun nate-agent--handle-response (buf response)
-  "Render API response into BUF; dispatch on output type."
+  "Render API response into BUF; dispatch on output type.
+Filters out openrouter:web_search items and handles annotations in messages."
   (let* ((output      (gethash "output" response))     ; vector of output items
          (output-list (append output nil))              ; vector → list
          (usage       (gethash "usage" response))
@@ -291,6 +298,10 @@ If STATUS is 'approved, run fn unconditionally.  Non-destructive tools always ru
                            (or (gethash "output_tokens" usage) 0)))))
     (when in-tok
       (with-current-buffer buf (setq nate-agent--last-input-tokens in-tok)))
+    ;; Filter out web_search items - they're server-side, not client tools
+    (setq output-list (seq-remove (lambda (item)
+                                    (string= (gethash "type" item) "openrouter:web_search"))
+                                  output-list))
     ;; Detect tool use: any output item with type "function_call"
     (let ((tool-calls (seq-filter (lambda (item)
                                     (string= (gethash "type" item) "function_call"))
