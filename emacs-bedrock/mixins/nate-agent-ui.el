@@ -25,7 +25,7 @@
          (face (cond ((>= pct 80) 'nate-agent-tokens-high)
                      ((>= pct 50) 'nate-agent-tokens-mid)
                      (t           'nate-agent-tokens-low)))
-         (str  (format "%dk/%dk(%d%%)" (/ n 1000)
+         (str  (format "%dk/%dk(%d%%%%)" (/ n 1000)
                        (/ nate-agent-context-window 1000) pct)))
     `(:propertize ,str face ,face)))
 
@@ -47,7 +47,7 @@
 (defun nate-agent--back-to-tool-heading ()
   "Move point to the enclosing ** Tool: heading, error if not found."
   (org-back-to-heading t)
-  (while (> (org-current-level) 2)
+  (while (> (org-current-level) 1)
     (outline-up-heading 1 t))
   (unless (string-prefix-p "Tool: " (org-entry-get (point) "ITEM"))
     (user-error "Not inside a tool heading")))
@@ -75,76 +75,115 @@
     (goto-char (point-max))
     (insert text)))
 
-(defun nate-agent--ui-append-literal (buf text)
-  "Wrap TEXT in an example block and append to BUF."
-  (with-current-buffer buf
-    (goto-char (point-max))
-    (insert (format "#+begin_example\n%s\n#+end_example"
-                    (org-escape-code-in-string text)))))
-
-(defun nate-agent--ui-append-thinking (buf text)
-  "Render a thinking text block into BUF, folded."
-  (with-current-buffer buf
-    (goto-char (point-max))
-    (let ((start (point)))
-      (insert "** Thinking\n")
-      (nate-agent--ui-append-literal buf text)
+(defun nate-agent--ui-append-assistant (buf text)
+  "Append TEXT to BUF under the current * Assistant heading.
+Demotes any headings in TEXT to level 2+ so they nest properly."
+  (let ((start (with-current-buffer buf (point-max))))
+    (nate-agent--ui-append buf text)
+    (with-current-buffer buf
       (save-excursion
-        (goto-char start)
-        (org-fold-subtree t)))))
+        (save-restriction
+          (narrow-to-region start (point-max))
+          (goto-char (point-min))
+          (while (re-search-forward org-heading-regexp nil t)
+            (beginning-of-line)
+            (when (< (org-current-level) 2)
+              (org-demote-subtree))
+            (org-end-of-subtree t t)))))))
+
+(defun nate-agent--ui-insert-text-output (buf output-list)
+  "Insert non-function output items (reasoning, message) from OUTPUT-LIST into BUF.
+Writes separate * Assistant headings for reasoning and message items.
+Returns non-nil if any text was written."
+  (let (text-written)
+    (dolist (item output-list)
+      (let ((type (gethash "type" item)))
+        (when-let ((data (and (or (string= type "reasoning") (string= type "message"))
+                              (nate-agent--extract-text-content item type))))
+          (nate-agent--ui-append buf "\n* Assistant\n")
+          (nate-agent--ui-set-assistant-tag buf type)
+          (nate-agent--ui-append-assistant buf data)
+          (setq text-written t))))
+    text-written))
+
+(defun nate-agent--extract-text-content (item type)
+  "Extract text from ITEM's content array based on TYPE.
+TYPE should be \"reasoning\" or \"message\". Returns nil if empty."
+  (let* ((content (gethash "content" item))
+         (content-list (when content (append content nil)))
+         (block-type (if (string= type "reasoning") "reasoning_text" "output_text")))
+    (when content-list
+      (let ((text (mapconcat (lambda (block)
+                              (when (string= (gethash "type" block) block-type)
+                                (gethash "text" block)))
+                            content-list "")))
+        (when (and text (not (string-empty-p text)))
+          text)))))
+
 
 (defun nate-agent--ui-append-tool-call (buf name input id)
   "Render a tool call heading into BUF."
   (with-current-buffer buf
     (goto-char (point-max))
     (insert "\n")
-    (insert (format "** Tool: %s\n" name))
+    (insert (format "* Tool: %s\n" name))
     (org-set-property "TOOL_NAME" name)
     (org-set-property "TOOL_ID" id)
+    (org-back-to-heading)
+    (org-set-tags '("pending"))    
     (goto-char (point-max))
-    (insert (format "*** Input\n#+begin_src json\n%s\n#+end_src\n" (json-encode input)))))
+    (insert "\n")
+    (let ((input-start (point)))
+      (insert (format "** Input\n#+begin_src json\n%s\n#+end_src\n" (json-encode input)))
+      (save-excursion
+        (goto-char input-start)
+        (org-fold-subtree t)))))
 
 (defun nate-agent--ui-write-tool-result (buf id result)
-  "Append *** Result under the ** Tool heading matching ID in BUF. Folds the subtree."
+  "Append ** Result under the * Tool heading matching ID in BUF.
+Changes :pending: tag to :executed: and folds the subtree."
   (with-current-buffer buf
     (goto-char (point-max))
     (unless (re-search-backward (concat ":TOOL_ID: +" (regexp-quote id)) nil t)
       (error "No tool heading found for TOOL_ID %s" id))
     (org-back-to-heading t)
+    ;; Change :pending: to :executed:, remove :pending_approval:/:approved:
+    (let ((tags (org-get-tags)))
+      (setq tags (cl-remove-if (lambda (t) (member t '("pending" "pending_approval" "approved"))) tags))
+      (org-set-tags (cons "executed" tags)))
     (let ((subtree-start (point)))
       (org-end-of-subtree t t)
-      (insert (format "*** Result\n#+begin_example\n%s\n#+end_example\n"
+      (insert (format "** Result\n#+begin_example\n%s\n#+end_example\n"
                       (org-escape-code-in-string result)))
       (save-excursion
         (goto-char subtree-start)
         (org-fold-subtree t)))))
 
-(defun nate-agent--ui-insert-tool-calls (buf content-list)
-  "Insert tool_use and thinking blocks from CONTENT-LIST into BUF."
-  (dolist (block content-list)
-    (cond
-     ((string= (gethash "type" block) "tool_use")
-      (let* ((name (gethash "name" block))
-             (input (gethash "input" block))
-             (id (gethash "id" block))
-	     (tool (gethash name nate-agent--tool-registry)))
-	(unless tool
-	  (error "Unknown tool requested by model: %s" name))
-	(nate-agent--ui-append-tool-call buf name input id)
-	(condition-case err
-	 (let* ((display-fn (plist-get tool :display-fn))
-		(display    (when display-fn (funcall display-fn input)))
-		(content    (if (consp display) (car display) display))
-		(lang       (when (consp display) (cadr display))))
-           (when content
-             (nate-agent--ui-write-display buf id content lang)))
-	 (error
-	  (nate-agent--ui-write-tool-result buf id "Tool call failed, invalid arguments")))))
-     ((string= (gethash "type" block) "text")
-      (nate-agent--ui-append-thinking buf (gethash "text" block))))))
+(defun nate-agent--ui-insert-tool-calls (buf output-list)
+  "Insert function_call items from OUTPUT-LIST into BUF."
+  (dolist (item output-list)
+    (when (string= (gethash "type" item) "function_call")
+      (let* ((name  (gethash "name" item))
+             (id    (gethash "call_id" item))
+             (args  (gethash "arguments" item))  ; JSON string
+             (input (let ((json-object-type 'hash-table))
+                      (json-read-from-string args)))
+             (tool  (gethash name nate-agent--tool-registry)))
+        (unless tool
+          (error "Unknown tool requested by model: %s" name))
+        (nate-agent--ui-append-tool-call buf name input id)
+        (condition-case err
+            (let* ((display-fn (plist-get tool :display-fn))
+                   (display    (when display-fn (funcall display-fn input)))
+                   (content    (if (consp display) (car display) display))
+                   (lang       (when (consp display) (cadr display))))
+              (when content
+                (nate-agent--ui-write-display buf id content lang)))
+          (error
+           (nate-agent--ui-write-tool-result buf id (format "Tool validation error: %s" (error-message-string err)))))))))
 
 (defun nate-agent--ui-write-display (buf id content &optional lang)
-  "Write a *** Display block under the tool heading with ID in BUF.
+  "Write a ** Display block under the tool heading with ID in BUF.
 CONTENT is the display string. LANG is the src block language (nil = example block)."
   (with-current-buffer buf
     (save-excursion
@@ -152,27 +191,14 @@ CONTENT is the display string. LANG is the src block language (nil = example blo
       (org-back-to-heading t)
       (org-end-of-subtree t t)
       (if lang
-          (insert (format "*** Display\n#+begin_src %s\n%s\n#+end_src\n"
+          (insert (format "** Display\n#+begin_src %s\n%s\n#+end_src\n"
                           lang (org-escape-code-in-string content)))
-        (insert (format "*** Display\n#+begin_example\n%s\n#+end_example\n"
+        (insert (format "** Display\n#+begin_example\n%s\n#+end_example\n"
                         (org-escape-code-in-string content)))))))
 
-(defun nate-agent--ui-append-response (buf text)
-  "Render the model's final TEXT into BUF under a ** Response heading.
-Top-level headings in TEXT are demoted to keep them nested under ** Response."
-  (nate-agent--ui-append buf "** Response\n")
-  (let ((response-start (with-current-buffer buf (point-max))))
-    (nate-agent--ui-append buf text)
-    (with-current-buffer buf
-      (save-excursion
-        (save-restriction
-          (narrow-to-region response-start (point-max))
-          (goto-char (point-min))
-          (while (re-search-forward org-heading-regexp nil t)
-            (beginning-of-line)
-            (while (< (org-current-level) 3)
-              (org-demote-subtree))
-            (org-end-of-subtree t t)))))))
+(defun nate-agent--ui-append-error (buf text)
+  "Append error TEXT to BUF under a ** Response heading."
+  (nate-agent--ui-append buf (format "** Response\n%s\n" text)))
 
 (defun nate-agent--ui-set-assistant-tag (buf tag)
   "Set TAG on the most recent * Assistant heading in BUF."

@@ -218,69 +218,60 @@ that genuinely require a running process (build, test, git, execute code, etc.).
 
 (nate-agent-register-tool
  "edit_buffer"
- "Replace one or more exact strings in an Emacs buffer with new text.
-Each entry in `edits' is an {old_string, new_string} pair.
-old_string must match exactly once — make it long enough to be unique.
-Edits are applied in order, so later old_strings must match the buffer
-after earlier edits have been applied.
-Opens a review buffer showing all proposed changes (red) vs current (green);
-the agent pauses until you accept (C-c C-a / C-c C-c) or reject (C-c C-k)."
+ "Replace an exact string in an Emacs buffer with new text.
+old_string must match exactly once in the buffer — make it long enough to be unique.
+Use grep_files with context_lines or search_buffer to find the exact text first.
+Opens a diff preview; accept with C-c C-a / C-c C-c or reject with C-c C-k."
  '((type . "object")
    (properties . ((name  . ((type . "string") (description . "Buffer name")))
-                  (edits . ((type  . "array")
-                            (description . "Ordered list of replacements to apply")
-                            (items . ((type . "object")
-                                      (properties
-                                       . ((old_string . ((type . "string")
-                                                         (description . "Exact text to replace; must appear exactly once")))
-                                          (new_string . ((type . "string")
-                                                         (description . "Replacement text")))))
-                                      (required . ["old_string" "new_string"])))))))
-   (required . ["name" "edits"]))
+                  (old_string . ((type . "string")
+                                 (description . "Exact text to replace; must appear exactly once. Preserve all whitespace including tabs.")))
+                  (new_string . ((type . "string")
+                                 (description . "Replacement text")))))
+   (required . ["name" "old_string" "new_string"]))
  (lambda (input)
-   (let* ((buf-name  (gethash "name" input))
-          (edits-vec (gethash "edits" input))
-          (tool-id   (gethash "_tool_id" input))
-          (agent-buf (gethash "_agent_buf" input))
-          (target    (get-buffer buf-name))
-          (edits     (mapcar (lambda (e)
-                               (cons (gethash "old_string" e)
-                                     (gethash "new_string" e)))
-                             edits-vec)))
+   (let* ((buf-name   (gethash "name" input))
+          (old-string (gethash "old_string" input))
+          (new-string (gethash "new_string" input))
+          (target     (get-buffer buf-name)))
      (unless target (error "No buffer named %S" buf-name))
      (with-current-buffer target
-       (dolist (edit edits)
-         (goto-char (point-min))
-         (unless (search-forward (car edit) nil t)
-           (error "old_string not found in %s: %S" buf-name (car edit)))
-         (replace-match (cdr edit) t t))
+       (goto-char (point-min))
+       (unless (search-forward old-string nil t)
+         (error "old_string not found in %s" buf-name))
+       (replace-match new-string t t)
        (save-buffer))
      (format "Edit accepted. %s updated." buf-name)))
  t
  (lambda (input)
-  (let* ((buf-name  (gethash "name" input))
-         (edits-vec (gethash "edits" input))
-         (target    (get-buffer buf-name))
-         (edits     (mapcar (lambda (e)
-                              (cons (gethash "old_string" e)
-                                    (gethash "new_string" e)))
-                            edits-vec))
-         (current-file (buffer-file-name target))
-         (prop-file    (make-temp-file "nate-agent-edit-")))
-    (with-temp-file prop-file
-      (insert (with-current-buffer target (buffer-string)))
-      (dolist (edit edits)
-        (goto-char (point-min))
-        (unless (search-forward (car edit) nil t)
-          (delete-file prop-file)
-          (error "old_string not found in %s: %S" buf-name (car edit)))
-        (replace-match (cdr edit) t t)))
-    (let ((diff (shell-command-to-string
-                 (format "diff -u %s %s"
-                         (shell-quote-argument current-file)
-                         (shell-quote-argument prop-file)))))
-      (delete-file prop-file)
-      (list diff "diff")))))   
+   (let* ((buf-name   (gethash "name" input))
+          (old-string (gethash "old_string" input))
+          (new-string (gethash "new_string" input))
+          (target     (get-buffer buf-name)))
+     (unless target
+       (error "No buffer named %S" buf-name))
+     (with-current-buffer target
+       (goto-char (point-min))
+       (unless (search-forward old-string nil t)
+         ;; Return detailed error with visible whitespace
+         (let* ((escaped (replace-regexp-in-string "\t" "<TAB>" old-string))
+                (escaped (replace-regexp-in-string " " "·" escaped))
+                (preview (substring escaped 0 (min 200 (length escaped)))))
+           (error "old_string not found.\n\nSearched for (first 200 chars, spaces=·, tabs=<TAB>):\n%s\n\nTip: Use grep_files with context_lines or search_buffer to get exact text including whitespace." preview))))
+     ;; Generate diff
+     (let ((current-file (buffer-file-name target))
+           (prop-file    (make-temp-file "nate-agent-edit-")))
+       (with-temp-file prop-file
+         (insert (with-current-buffer target (buffer-string)))
+         (goto-char (point-min))
+         (search-forward old-string nil t)  ; we know it exists
+         (replace-match new-string t t))
+       (let ((diff (shell-command-to-string
+                    (format "diff -u %s %s"
+                            (shell-quote-argument current-file)
+                            (shell-quote-argument prop-file)))))
+         (delete-file prop-file)
+         (list diff "diff"))))))   
 
 (nate-agent-register-tool
  "get_buffer_local_variable"
@@ -319,7 +310,7 @@ Use this instead of grep/shell commands when the buffer is already open in Emacs
        (save-excursion
          (goto-char (point-min))
          (while (re-search-forward regexp nil t)
-           (push (format "%d: %s"p
+           (push (format "%d: %s"
                          (line-number-at-pos)
                          (buffer-substring-no-properties
                           (line-beginning-position)

@@ -228,6 +228,8 @@ If the new path's directories does not exist, create them."
 
 (use-package emacs
   :config
+  ;; Make top-level headings use cyan for better contrast
+  (setq modus-vivendi-palette-overrides '((fg-heading-1 cyan-intense)))
   (load-theme 'modus-vivendi))          ; for light theme, use modus-operandi
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -292,9 +294,13 @@ If the new path's directories does not exist, create them."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(custom-safe-themes
+   '("f654d73d7a0761cc4f7d99fffe4b16fce1b2d95844f37bc786e455cec744ac75"
+     default))
  '(package-selected-packages
    '(claude-code csv-mode god-mode htmlize inheritenv languagetool
-		 paredit rainbow-delimiters))
+		 markdown-mode paredit rainbow-delimiters
+		 zenburn-theme))
  '(package-vc-selected-packages
    '((claude-code :url "https://github.com/stevemolitor/claude-code.el")))
  '(safe-local-variable-values

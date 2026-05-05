@@ -1,13 +1,13 @@
-;;; nate-agent.el --- Minimal Anthropic LLM agent with Emacs tool calling  -*- lexical-binding: t -*-
+;;; nate-agent.el --- LLM agent with Emacs tool calling via OpenRouter  -*- lexical-binding: t -*-
 
 ;;; Commentary:
-;; A from-scratch LLM agent loop using the Anthropic Messages API.
+;; A from-scratch LLM agent loop using the OpenRouter Responses API.
 ;; Implements tool calling so the model can inspect and edit Emacs buffers.
 ;;
 ;; All dependencies are built-in: auth-source, json, url, subr-x.
 ;;
 ;; Setup: add your key to ~/.authinfo.gpg (or ~/.authinfo):
-;;   machine api.anthropic.com login apikey password sk-ant-XXXX
+;;   machine openrouter.ai login apikey password sk-or-XXXX
 ;;
 ;; Usage: M-x nate-agent
 ;;   Type a message and press C-c C-c to send.
@@ -26,8 +26,8 @@
 ;;;; Configuration
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defvar nate-agent-model "claude-sonnet-4-6"
-  "Anthropic model to use.")
+(defvar nate-agent-model "z-ai/glm-5"
+  "Model to use, as an OpenRouter model string e.g. \"anthropic/claude-sonnet-4-5\".")
 
 (defvar nate-agent-max-tokens 8096
   "Maximum tokens for model responses.")
@@ -46,6 +46,9 @@ Tool preference order — always use the highest-priority applicable tool:
 
 (defvar-local nate-agent--last-response nil
   "Raw JSON string of the last API response, for debugging.")
+
+(defvar nate-agent-api-url "https://openrouter.ai/api/v1/responses"
+  "OpenRouter Responses API endpoint.")
 
 (defvar nate-agent-context-window 200000
   "Input context window size in tokens. Used for the mode-line usage bar.")
@@ -83,41 +86,41 @@ Tool preference order — always use the highest-priority applicable tool:
   (nate-agent--show-json-buf "*nate-agent-response*" nate-agent--last-response))
 
 (defun nate-agent--api-key ()
-  "Retrieve the Anthropic API key from auth-source.
-Looks for: machine api.anthropic.com login apikey password sk-ant-..."
-  (let ((entry (car (auth-source-search :host "api.anthropic.com"
+  "Retrieve the OpenRouter API key from auth-source.
+Looks for: machine openrouter.ai login apikey password sk-or-..."
+  (let ((entry (car (auth-source-search :host "openrouter.ai"
                                         :require '(:secret)))))
     (unless entry
-      (error "No entry for api.anthropic.com in auth-source"))
+      (error "No entry for openrouter.ai in auth-source"))
     (let ((secret (plist-get entry :secret)))
       (encode-coding-string (funcall secret) 'utf-8))))
 
 (defun nate-agent--request (agent-buf messages tool-defs on-success on-error)
-  "POST MESSAGES and TOOL-DEFS to the Anthropic API asynchronously.
+  "POST MESSAGES and TOOL-DEFS to the OpenRouter Responses API asynchronously.
 ON-SUCCESS is called with the parsed response alist.
 ON-ERROR is called with a description of the failure.
 AGENT-BUF is used to store the last request/response for debugging."
   (let* ((url-request-method "POST")
          (url-request-extra-headers
-          `(("x-api-key"         . ,(nate-agent--api-key))
-            ("anthropic-version" . "2023-06-01")
-            ("content-type"      . "application/json")))
+          `(("Authorization" . ,(concat "Bearer " (nate-agent--api-key)))
+            ("content-type"  . "application/json")))
 	 (body (encode-coding-string
 		(json-encode
-		 `((model      . ,nate-agent-model)
-		   (max_tokens . ,nate-agent-max-tokens)
-		   (system     . [((type . "text")
-                                   (text . ,nate-agent--system-prompt)
-                                   (cache_control . ((type . "ephemeral"))))])
-		   (tools      . ,(apply #'vector tool-defs))
-		   (messages   . ,(apply #'vector messages))))
+		 (append
+		  `((model            . ,(nate-agent--model agent-buf))
+		    (max_output_tokens . ,nate-agent-max-tokens)
+		    (instructions     . ,nate-agent--system-prompt)
+		    (tools            . ,(apply #'vector tool-defs))
+		    (input            . ,(apply #'vector messages)))
+		  (when (string-prefix-p "anthropic/" (nate-agent--model agent-buf))
+		    '((cache_control . ((type . "ephemeral")))))))
 		'utf-8))
          (url-request-data
 	  body))
     (with-current-buffer agent-buf
       (setq nate-agent--last-request body))
     (url-retrieve
-     "https://api.anthropic.com/v1/messages"
+     nate-agent-api-url
      (lambda (status)
        (let (saved-bt)
 	 ;; Wrap everything: process sentinel errors are swallowed silently,
@@ -173,14 +176,17 @@ DISPLAY-FN  — called with input to produce the approval preview.
 
 (defun nate-agent--tool-api-defs ()
   "Return all registered tools as a list of alists for the request body.
-The last tool definition is stamped with cache_control so the full set
-of tool definitions is cached by the API across requests."
+Each tool is wrapped in the OpenRouter/OpenAI function tool format."
   (let (defs)
-    (maphash (lambda (_name tool) (push (plist-get tool :api-def) defs))
+    (maphash (lambda (_name tool)
+               (let ((api-def (plist-get tool :api-def)))
+                 (push `((type     . "function")
+                         (name        . ,(alist-get 'name        api-def))
+                         (description . ,(alist-get 'description api-def))
+                         (parameters  . ,(alist-get 'input_schema api-def)))
+                       defs)))
              nate-agent--tool-registry)
-    (append (butlast defs)
-            (list (append (car (last defs))
-                          '((cache_control . ((type . "ephemeral")))))))))
+    defs))
 
 (defun nate-agent--execute-tool (name input status)
   "Execute tool NAME with INPUT alist and STATUS from the tool heading tags.
@@ -194,7 +200,7 @@ If STATUS is 'approved, run fn unconditionally.  Non-destructive tools always ru
       (error "Unknown tool requested by model: %s" name))
     (if (and (plist-get tool :destructive) (not (eq status 'approved)))
 	(progn
-         (nate-agent--ui-tag-tool agent-buf id '("pending_approval"))
+         (nate-agent--ui-tag-tool agent-buf id '("pending" "pending_approval"))
 	 (pop-to-buffer agent-buf)
 	 (with-current-buffer agent-buf
 	   (nate-agent--ui-goto-tool agent-buf id))
@@ -212,7 +218,9 @@ If STATUS is 'approved, run fn unconditionally.  Non-destructive tools always ru
     (nate-agent--back-to-tool-heading)
     (unless (member "pending_approval" (org-get-tags))
       (user-error "Not on a pending_approval tool heading"))
-    (org-set-tags (list "approved")))
+    (let ((tags (org-get-tags)))
+      (setq tags (remove "pending_approval" tags))
+      (org-set-tags (cons "approved" tags))))
   (nate-agent--schedule-step (current-buffer)))
 
 (defun nate-agent-decline-tool ()
@@ -229,7 +237,6 @@ If STATUS is 'approved, run fn unconditionally.  Non-destructive tools always ru
            (result (if (string-empty-p reason)
                        "Declined by user."
                      (format "Declined by user: %s" reason))))
-      (org-set-tags nil)
       (nate-agent--ui-write-tool-result (current-buffer) id result)))
   (nate-agent--schedule-step (current-buffer)))
 
@@ -240,10 +247,9 @@ If STATUS is 'approved, run fn unconditionally.  Non-destructive tools always ru
     (user-error "Not in agent buffer"))
   (save-excursion
     (goto-char (point-min))
-    (while (re-search-forward ":pending_approval:" nil t)
+    (while (re-search-forward ":pending:" nil t)
       (org-back-to-heading t)
       (let ((id (org-entry-get (point) "TOOL_ID")))
-        (org-set-tags nil)
         (nate-agent--ui-write-tool-result (current-buffer) id "Aborted by user."))))
   (nate-agent--ui-ready (current-buffer)))
 
@@ -262,43 +268,42 @@ If STATUS is 'approved, run fn unconditionally.  Non-destructive tools always ru
 (defun nate-agent--run (buf)
   "Send BUF's conversation history to the API and handle the response."
   (nate-agent--ui-set-status buf 'waiting)
-  (nate-agent--ui-append buf "\n* Assistant\n")
   (nate-agent--request
    buf
    (with-current-buffer buf (nate-agent--build-history))
    (nate-agent--tool-api-defs)
    (lambda (response) (nate-agent--handle-response buf response))
    (lambda (err-type err)
-     (nate-agent--ui-set-assistant-tag buf "end_turn")
-     (nate-agent--ui-append-response buf (format "Error (%s):\n#+begin_example\n%s\n#+end_example" err-type (org-escape-code-in-string err)))
+     (nate-agent--ui-append buf "* Assistant\n")
+     (nate-agent--ui-set-assistant-tag buf "error")
+     (nate-agent--ui-append-error buf (format "Error (%s):\n#+begin_example\n%s\n#+end_example" err-type (org-escape-code-in-string err)))
      (nate-agent--ui-ready buf))))
 
+
+
 (defun nate-agent--handle-response (buf response)
-  "Render API response into BUF; dispatch on stop_reason."
-  (let* ((stop-reason  (gethash "stop_reason" response))
-         (content      (gethash "content" response))   ; vector of content blocks
-         (content-list (append content nil))            ; vector → list for dolist
-         (usage        (gethash "usage" response))
-         (in-tok       (when usage
-                        (+ (or (gethash "input_tokens"              usage) 0)
-                           (or (gethash "cache_read_input_tokens"    usage) 0)
-                           (or (gethash "cache_creation_input_tokens" usage) 0)))))
+  "Render API response into BUF; dispatch on output type."
+  (let* ((output      (gethash "output" response))     ; vector of output items
+         (output-list (append output nil))              ; vector → list
+         (usage       (gethash "usage" response))
+         (in-tok      (when usage
+                        (+ (or (gethash "input_tokens"  usage) 0)
+                           (or (gethash "output_tokens" usage) 0)))))
     (when in-tok
       (with-current-buffer buf (setq nate-agent--last-input-tokens in-tok)))
-    (nate-agent--ui-set-assistant-tag buf stop-reason) ; now we have a response, update the tag
-    (if (string= stop-reason "tool_use")
-        (progn
-	  (nate-agent--ui-insert-tool-calls buf content-list)
-	  (nate-agent--schedule-step buf))
-      ;; Terminal response: extract text blocks and display
-      (nate-agent--ui-append-response
-       buf
-       (mapconcat (lambda (block)
-                    (if (string= (gethash "type" block) "text")
-                      (gethash "text" block)
-		      ""))
-                  content-list ""))
-      (nate-agent--ui-ready buf))))
+    ;; Detect tool use: any output item with type "function_call"
+    (let ((tool-calls (seq-filter (lambda (item)
+                                    (string= (gethash "type" item) "function_call"))
+                                  output-list)))
+      (if tool-calls
+          ;; Tool use: write assistant with text (if any), then tools
+          (progn
+            (nate-agent--ui-insert-text-output buf output-list)
+            (nate-agent--ui-insert-tool-calls buf output-list)
+            (nate-agent--schedule-step buf))
+        ;; Terminal response: write text output (reasoning/message headings)
+        (nate-agent--ui-insert-text-output buf output-list)
+        (nate-agent--ui-ready buf)))))
 
 
 (defun nate-agent-step ()
@@ -352,6 +357,16 @@ In needs-tool-execution state: tries to execute the next pending tool."
     (when (re-search-forward "^\\* Nate Agent Info" nil t)
       (org-entry-get (point) "WORKING_DIRECTORY"))))
 
+(defun nate-agent--model (buf)
+  "Return the MODEL property from the * Nate Agent Info heading in BUF.
+Falls back to `nate-agent-model' if no property is set."
+  (with-current-buffer buf 
+    (or (save-excursion
+          (goto-char (point-min))
+          (when (re-search-forward "^\\* Nate Agent Info" nil t)
+            (org-entry-get (point) "MODEL")))
+	nate-agent-model)))
+
 ;;;###autoload
 (defun nate-agent (working-dir)
   "Start a new agent session rooted at WORKING-DIR.
@@ -368,13 +383,13 @@ heading (with WORKING_DIRECTORY property), then the initial * User prompt."
       (when (= (buffer-size) 0)
         (let ((dir (expand-file-name working-dir)))
 	  (insert "* Nate Agent Info\n")
-          (insert (format "Model: %s  |  C-c C-c to send\n" nate-agent-model))
           (insert (format "Tools: %s\n" (mapconcat #'identity
 						   (hash-table-keys nate-agent--tool-registry)
 						   ", ")))
           (save-excursion
             (re-search-backward "^\\* Nate Agent Info" nil t)
-            (org-set-property "WORKING_DIRECTORY" dir))
+            (org-set-property "WORKING_DIRECTORY" dir)
+            (org-set-property "MODEL" (nate-agent--model (current-buffer))))
           (nate-agent--ui-ready (current-buffer)))))
     (pop-to-buffer buf)))
 
@@ -428,15 +443,9 @@ heading (with WORKING_DIRECTORY property), then the initial * User prompt."
 
 ;;;;; NOTES
 ;;; TODO cancel: interrupt in-flight API requests and running tool calls
-;;; TODO don't fold thinking blocks; render them as normal response text
 ;;; TODO make tool call headings show a short input summary (eg ** Tool: read_buffer "init.el")
-;;; TODO add an interactive funcstion for when a tool call stalls without writing a result
+;;; TODO add an interactive function for when a tool call stalls without writing a result
 ;;; TODO add web search
 ;;; TODO unify ui and history — they are inverses of the same serialisation process
-;;; TODO switch to open router for api
-;;; TODO improve token use tracking. not just last request or at least break down into cached, input, ouput etc. Maybe store running totals of usage?
-;;; TODO get rid of model global state, read from header line
-;;; TODO fix edit that fail because the old string isn't found. Currently it dumps a huge lisp backtrace.
 ;;; TODO fix shell command, sometimes the output starts before the whole begin/end line is fully written to the terminal. I think this happens when the command string contrains newlines. I think it only happens on slow commands. Change to a new approach
-;;; TODO fold input block for tools needing approval.
 ;;; TODO for create_buffer, guess src mode from filename to display.
