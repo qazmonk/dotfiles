@@ -103,6 +103,13 @@ Returns non-nil if any text was written."
           (nate-agent--ui-append buf "\n* Assistant\n")
           (nate-agent--ui-set-assistant-tag buf type)
           (nate-agent--ui-append-assistant buf data)
+          ;; Auto-fold reasoning messages
+          (when (string= type "reasoning")
+            (with-current-buffer buf
+              (save-excursion
+                (goto-char (point-max))
+                (re-search-backward "^\\* Assistant" nil t)
+                (org-fold-subtree t))))
           (setq text-written t))))
     text-written))
 
@@ -160,27 +167,41 @@ Changes :pending: tag to :executed: and folds the subtree."
         (org-fold-subtree t)))))
 
 (defun nate-agent--ui-insert-tool-calls (buf output-list)
-  "Insert function_call items from OUTPUT-LIST into BUF."
+  "Insert function_call items from OUTPUT-LIST into BUF.
+If JSON parsing of tool arguments fails, treat it as a failed tool call."
   (dolist (item output-list)
     (when (string= (gethash "type" item) "function_call")
       (let* ((name  (gethash "name" item))
              (id    (gethash "call_id" item))
-             (args  (gethash "arguments" item))  ; JSON string
-             (input (let ((json-object-type 'hash-table))
-                      (json-read-from-string args)))
-             (tool  (gethash name nate-agent--tool-registry)))
-        (unless tool
-          (error "Unknown tool requested by model: %s" name))
-        (nate-agent--ui-append-tool-call buf name input id)
+             (args  (gethash "arguments" item)))  ; JSON string
+        ;; First: try to parse JSON and append tool heading
+        ;; If this fails, we haven't written anything yet
         (condition-case err
-            (let* ((display-fn (plist-get tool :display-fn))
-                   (display    (when display-fn (funcall display-fn input)))
-                   (content    (if (consp display) (car display) display))
-                   (lang       (when (consp display) (cadr display))))
-              (when content
-                (nate-agent--ui-write-display buf id content lang)))
+            (let* ((input (let ((json-object-type 'hash-table))
+                            (json-read-from-string args)))
+                   (tool  (gethash name nate-agent--tool-registry)))
+              (unless tool
+                (error "Unknown tool requested by model: %s" name))
+              ;; Write the tool call heading
+              (nate-agent--ui-append-tool-call buf name input id)
+              ;; Now try to write the display (if any)
+              ;; If this fails, the tool call is already written, so just write error result
+              (condition-case display-err
+                  (let* ((display-fn (plist-get tool :display-fn))
+                         (display    (when display-fn (funcall display-fn input)))
+                         (content    (if (consp display) (car display) display))
+                         (lang       (when (consp display) (cadr display))))
+                    (when content
+                      (nate-agent--ui-write-display buf id content lang)))
+                (error
+                 ;; Display failed - tool heading already written, just add result
+                 (nate-agent--ui-write-tool-result buf id (format "Tool validation error: %s" (error-message-string display-err)))
+                 (nate-agent--schedule-step buf))))
           (error
-           (nate-agent--ui-write-tool-result buf id (format "Tool validation error: %s" (error-message-string err)))))))))
+           ;; JSON parse error - tool call not written yet, write it with empty input + error
+           (nate-agent--ui-append-tool-call buf name (make-hash-table :test 'equal) id)
+           (nate-agent--ui-write-tool-result buf id (format "Tool error: %s" (error-message-string err)))
+           (nate-agent--schedule-step buf)))))))
 
 (defun nate-agent--ui-write-display (buf id content &optional lang)
   "Write a ** Display block under the tool heading with ID in BUF.
@@ -220,6 +241,21 @@ CONTENT is the display string. LANG is the src block language (nil = example blo
   (with-current-buffer buf
     (goto-char (point-max))
     (insert "\n* User\n")))
+
+(defun nate-agent--ui-append-request (buf req-buf)
+  "Append a '* Request' heading to BUF with REQUEST-BODY in a folded json src block.
+REQ-BUF is the url-retrieve buffer, whose name is stored in the REQUEST_BUFFER
+property so `nate-agent-cancel-request' can find it."
+  (with-current-buffer buf
+    (goto-char (point-max))
+    (insert "\n")
+    (let ((beg (point)))
+      (insert "* Request\n")
+      (org-set-property "REQUEST_BUFFER" (buffer-name req-buf))
+      (save-excursion
+	(goto-char beg)
+	(org-fold-subtree t)))))
+
 
 (provide 'nate-agent-ui)
 ;;; nate-agent-ui.el ends here

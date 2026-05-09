@@ -159,12 +159,18 @@ If a buffer exists visiting PATH, return that one. If PATH does not exist it is 
 
 (nate-agent-register-tool
  "create_buffer"
- "Create a new file at the given path with the given content, and open it in Emacs.
+ (concat "Create a new file at the given path with the given content, and open it in Emacs.
 The file's parent directory must already exist.
-The buffer is opened for you to review and save with C-x C-s."
+The buffer is opened for you to review and save with C-x C-s.
+The `language` parameter (optional) sets the source block language for syntax highlighting
+in the agent UI display. Available languages are: "
+         (format "%S" org-src-lang-modes)
+         ". If omitted, displays in an example block.")
  '((type . "object")
-   (properties . ((path    . ((type . "string") (description . "Absolute or ~ path for the new file")))
-                  (content . ((type . "string") (description . "Initial file contents")))))
+   (properties . ((path     . ((type . "string") (description . "Absolute or ~ path for the new file")))
+                  (content  . ((type . "string") (description . "Initial file contents")))
+                  (language . ((type . "string")
+                               (description . "Optional source block language for syntax highlighting in the display (matches entries in `org-src-lang-modes`). If nil, displays in an example block.")))))
    (required . ["path" "content"]))
  (lambda (input)
    (let* ((path    (expand-file-name (gethash "path" input)))
@@ -180,7 +186,11 @@ The buffer is opened for you to review and save with C-x C-s."
        (format "Created %s — review and save with C-x C-s." path))))
  t
  (lambda (input)
-   (gethash "content" input)))
+   (let* ((content (gethash "content" input))
+          (lang    (gethash "language" input)))
+     (if lang
+         (list content lang)
+       content))))
 
 (nate-agent-register-tool
  "run_shell_command"

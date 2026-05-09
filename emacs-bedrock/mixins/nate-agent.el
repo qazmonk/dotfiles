@@ -26,11 +26,17 @@
 ;;;; Configuration
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defvar nate-agent-model "z-ai/glm-5"
+(defvar nate-agent-model "minimax/minimax-m2.7" 
   "Model to use, as an OpenRouter model string e.g. \"anthropic/claude-sonnet-4-5\".")
 
-(defvar nate-agent-max-tokens 8096
+(defvar nate-agent-max-tokens (expt 2 16)
   "Maximum tokens for model responses.")
+
+(defvar nate-agent-reasoning-effort "high"
+  "Default reasoning effort level for models that support it.
+Can be nil, \"low\", \"medium\", or \"high\".
+When non-nil, sends a reasoning object with this effort level to the API.
+OpenRouter translates this to appropriate parameters for each provider.")
 
 (defvar nate-agent--system-prompt "You are a helpful assistant running inside Emacs. Format all responses using org-mode syntax rather than markdown. Use * for headings, -for lists, ~code~ for inline code, and #+begin_src / #+end_src for code blocks. When proposing edits, you MUST batch all independent tool calls into a single response rather than sequential edit then read. Before emitting any tool call, check whether there are other tool calls you could emit at the same time. If yes, emit them all together. Do not emit a tool call, wait for its result, and then emit another tool call that did not depend on that result. This harness is actively in development by the user so suggest new tools as they come up.
 
@@ -95,56 +101,75 @@ Looks for: machine openrouter.ai login apikey password sk-or-..."
     (let ((secret (plist-get entry :secret)))
       (encode-coding-string (funcall secret) 'utf-8))))
 
+
+
 (defun nate-agent--request (agent-buf messages tool-defs on-success on-error)
   "POST MESSAGES and TOOL-DEFS to the OpenRouter Responses API asynchronously.
 ON-SUCCESS is called with the parsed response alist.
 ON-ERROR is called with a description of the failure.
-AGENT-BUF is used to store the last request/response for debugging."
+AGENT-BUF is used to store the last request/response for debugging.
+
+Adds a '* Request' heading to AGENT-BUF so that `nate-agent--buffer-state'
+can detect an in-flight request and prevent duplicate sends.  The request
+buffer is killed in the callback after successful parsing or error."
   (let* ((url-request-method "POST")
          (url-request-extra-headers
           `(("Authorization" . ,(concat "Bearer " (nate-agent--api-key)))
             ("content-type"  . "application/json")))
-	 (body (encode-coding-string
-		(json-encode
-		 (append
-		  `((model            . ,(nate-agent--model agent-buf))
-		    (max_output_tokens . ,nate-agent-max-tokens)
-		    (instructions     . ,nate-agent--system-prompt)
-		    (tools            . ,(apply #'vector tool-defs))
-		    (input            . ,(apply #'vector messages)))
-		  (when (string-prefix-p "anthropic/" (nate-agent--model agent-buf))
-		    '((cache_control . ((type . "ephemeral")))))))
-		'utf-8))
-         (url-request-data
-	  body))
+         (reasoning-effort (nate-agent--reasoning-effort agent-buf))
+         (body (encode-coding-string
+                (json-encode
+                 (append
+                  `((model            . ,(nate-agent--model agent-buf))
+                    (max_output_tokens . ,nate-agent-max-tokens)
+                    (instructions     . ,nate-agent--system-prompt)
+                    (tools            . ,(apply #'vector tool-defs))
+                    (input            . ,(apply #'vector messages)))
+                  (when reasoning-effort
+                    `((reasoning . ((effort . ,reasoning-effort)))))
+                  (when (string-prefix-p "anthropic/" (nate-agent--model agent-buf))
+                    '((cache_control . ((type . "ephemeral")))))))
+                'utf-8))
+         (url-request-data body))
     (with-current-buffer agent-buf
       (setq nate-agent--last-request body))
-    (url-retrieve
-     nate-agent-api-url
-     (lambda (status)
-       (let (saved-bt)
-	 ;; Wrap everything: process sentinel errors are swallowed silently,
-	 ;; so we catch them here and route to on-error instead.
-	 (condition-case err
-	     ;; Catch backtraces for printing
-	     (handler-bind ((error (lambda (_err)
-				     (setq saved-bt (with-output-to-string (backtrace))))))
-	       (if-let* ((http-err (plist-get status :error)))
-		   (funcall on-error "http" (format "%s" (buffer-string)))
-		 (goto-char url-http-end-of-headers)
-		 (set-buffer-multibyte t)
-		 (let* ((response-string (buffer-substring-no-properties (point) (point-max)))
-			(json-object-type 'hash-table)
-			(body (json-read-from-string response-string)))
-		   (with-current-buffer agent-buf
-		     (setq nate-agent--last-response response-string))
-		   (kill-buffer (current-buffer))
-		   (if-let ((api-err (gethash "error" body)))
-		       (funcall on-error "api" (gethash "message" api-err "no message supplied"))
-		     (funcall on-success body)))))
-	   ((error debug)
-	    (funcall on-error "lisp" (format "%s\n%s" err saved-bt)))))
-       nil t))))   ; nil = no extra callback args, t = silent (don't pop buffer)
+    (let ((req-buf (url-retrieve nate-agent-api-url
+                                 (lambda (status)
+                                   ;; Wrap everything: process sentinel errors are swallowed silently,
+                                   ;; so we catch them here and route to on-error instead.
+                                   ;; Only catch 'error', not 'debug' - allows debugger to run on lisp errors.
+                                   (condition-case err
+                                       (if-let* ((http-err (plist-get status :error)))
+                                           (funcall on-error "http" (format "%s" (buffer-string)))
+                                         (goto-char url-http-end-of-headers)
+                                         (set-buffer-multibyte t)
+                                         (let* ((response-string (buffer-substring-no-properties (point) (point-max)))
+                                                (json-object-type 'hash-table)
+                                                (body (json-read-from-string response-string)))
+                                           (with-current-buffer agent-buf
+                                             (setq nate-agent--last-response response-string))
+                                           (kill-buffer (current-buffer))
+                                           (if-let ((api-err (gethash "error" body)))
+                                               (funcall on-error "api" (gethash "message" api-err "no message supplied"))
+                                             (funcall on-success body))))
+                                     (error
+                                      (funcall on-error "lisp" err))))
+                                 nil t)))
+      ;; url-retrieve returns a buffer whose name starts with a space (so it's
+      ;; hidden from buffer lists). Org property values can't preserve a leading
+      ;; space, so rename to a visible name we can round-trip through the
+      ;; REQUEST_BUFFER property.
+      ;; We must suppress the process query before renaming, since rename-buffer
+      ;; prompts for confirmation if the buffer has a live process.
+      (with-current-buffer req-buf
+        (when-let ((proc (get-buffer-process (current-buffer))))
+          (set-process-query-on-exit-flag proc nil))
+        (rename-buffer (generate-new-buffer-name
+                        (format "*nate-agent-request-%s*"
+                                (format-time-string "%s%3N")))))
+      ;; Now we have the buffer name — insert heading and set property in one go.
+      (nate-agent--ui-append-request agent-buf req-buf))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Tool Layer
@@ -167,11 +192,11 @@ DISPLAY-FN  — called with input to produce the approval preview.
                Returns either a string, or (content lang) for a src block."
   (puthash name
            `(:fn ,fn
-             :destructive ,destructive
-             :display-fn ,display-fn
-             :api-def ((name        . ,name)
-                       (description . ,description)
-                       (input_schema . ,schema)))
+		 :destructive ,destructive
+		 :display-fn ,display-fn
+		 :api-def ((name        . ,name)
+			   (description . ,description)
+			   (input_schema . ,schema)))
            nate-agent--tool-registry))
 
 (defun nate-agent--tool-api-defs ()
@@ -185,12 +210,12 @@ Also includes the openrouter:web_search server tool."
           defs)
     ;; Add user-registered function tools
     (maphash (lambda (_name tool)
-               (let ((api-def (plist-get tool :api-def)))
+	       (let ((api-def (plist-get tool :api-def)))
                  (push `((type     . "function")
                          (name        . ,(alist-get 'name        api-def))
                          (description . ,(alist-get 'description api-def))
                          (parameters  . ,(alist-get 'input_schema api-def)))
-                       defs)))
+		       defs)))
              nate-agent--tool-registry)
     defs))
 
@@ -206,11 +231,11 @@ If STATUS is 'approved, run fn unconditionally.  Non-destructive tools always ru
       (error "Unknown tool requested by model: %s" name))
     (if (and (plist-get tool :destructive) (not (eq status 'approved)))
 	(progn
-         (nate-agent--ui-tag-tool agent-buf id '("pending" "pending_approval"))
-	 (pop-to-buffer agent-buf)
-	 (with-current-buffer agent-buf
-	   (nate-agent--ui-goto-tool agent-buf id))
-	 nil)
+          (nate-agent--ui-tag-tool agent-buf id '("pending" "pending_approval"))
+	  (pop-to-buffer agent-buf)
+	  (with-current-buffer agent-buf
+	    (nate-agent--ui-goto-tool agent-buf id))
+	  nil)
       (condition-case err
           (funcall (plist-get tool :fn) input)
         (error (format "Tool error: %s" (error-message-string err)))))))
@@ -241,27 +266,35 @@ If STATUS is 'approved, run fn unconditionally.  Non-destructive tools always ru
     (let* ((id     (org-entry-get (point) "TOOL_ID"))
            (reason (read-string "Reason (optional): "))
            (result (if (string-empty-p reason)
-                       "Declined by user."
+		       "Declined by user."
                      (format "Declined by user: %s" reason))))
       (nate-agent--ui-write-tool-result (current-buffer) id result)))
   (nate-agent--schedule-step (current-buffer)))
 
-(defun nate-agent-abort ()
-  "Decline all pending tools and return to idle."
+(defun nate-agent-cancel-request ()
+  "Cancel any in-flight API requests by killing their response buffers.
+Searches for '* Request' headings and kills the associated url-retrieve buffers."
   (interactive)
   (unless (eq major-mode 'nate-agent-mode)
     (user-error "Not in agent buffer"))
   (save-excursion
     (goto-char (point-min))
-    (while (re-search-forward ":pending:" nil t)
-      (org-back-to-heading t)
-      (let ((id (org-entry-get (point) "TOOL_ID")))
-        (nate-agent--ui-write-tool-result (current-buffer) id "Aborted by user."))))
-  (nate-agent--ui-ready (current-buffer)))
+    (let ((cancelled 0))
+      (while (re-search-forward "^\\* Request$" nil t)
+        (org-back-to-heading t)
+        (let ((req-buf-name (org-entry-get (point) "REQUEST_BUFFER")))
+	  (print req-buf-name)
+          (when req-buf-name
+	    (print  (get-buffer req-buf-name))
+	    (when-let ((req-buf (get-buffer req-buf-name)))
+	      (print  req-buf)
+	      (when (kill-buffer req-buf)
+		(setq cancelled (1+ cancelled))))))
+        (goto-char (org-end-of-subtree t t)))
+      (if (= cancelled 0)
+          (message "No in-flight requests to cancel")
+        (message "Cancelled %d request(s)" cancelled)))))
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Agent Loop
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun nate-agent--schedule-step (buf)
@@ -280,10 +313,16 @@ If STATUS is 'approved, run fn unconditionally.  Non-destructive tools always ru
    (nate-agent--tool-api-defs)
    (lambda (response) (nate-agent--handle-response buf response))
    (lambda (err-type err)
-     (nate-agent--ui-append buf "* Assistant\n")
-     (nate-agent--ui-set-assistant-tag buf "error")
-     (nate-agent--ui-append-error buf (format "Error (%s):\n#+begin_example\n%s\n#+end_example" err-type (org-escape-code-in-string err)))
-     (nate-agent--ui-ready buf))))
+     (pcase err-type
+       ("lisp"
+	;; Lisp error - enter the debugger
+	(debug err))
+       (_
+	;; HTTP or API error - display in buffer
+	(nate-agent--ui-append buf "\n* Assistant\n")
+	(nate-agent--ui-set-assistant-tag buf "error")
+	(nate-agent--ui-append buf (format "** Error (%s)\n#+begin_example\n%s\n#+end_example\n" err-type (org-escape-code-in-string (format "%s" err))))
+	(nate-agent--ui-ready buf))))))
 
 
 
@@ -378,6 +417,16 @@ Falls back to `nate-agent-model' if no property is set."
             (org-entry-get (point) "MODEL")))
 	nate-agent-model)))
 
+(defun nate-agent--reasoning-effort (buf)
+  "Return the REASONING_EFFORT property from the * Nate Agent Info heading in BUF.
+Falls back to `nate-agent-reasoning-effort' if no property is set."
+  (with-current-buffer buf 
+    (or (save-excursion
+          (goto-char (point-min))
+          (when (re-search-forward "^\\* Nate Agent Info" nil t)
+            (org-entry-get (point) "REASONING_EFFORT")))
+	nate-agent-reasoning-effort)))
+
 ;;;###autoload
 (defun nate-agent (working-dir)
   "Start a new agent session rooted at WORKING-DIR.
@@ -400,7 +449,8 @@ heading (with WORKING_DIRECTORY property), then the initial * User prompt."
           (save-excursion
             (re-search-backward "^\\* Nate Agent Info" nil t)
             (org-set-property "WORKING_DIRECTORY" dir)
-            (org-set-property "MODEL" (nate-agent--model (current-buffer))))
+            (org-set-property "MODEL" (nate-agent--model (current-buffer)))
+            (org-set-property "REASONING_EFFORT" (or nate-agent-reasoning-effort "")))
           (nate-agent--ui-ready (current-buffer)))))
     (pop-to-buffer buf)))
 
@@ -422,7 +472,7 @@ heading (with WORKING_DIRECTORY property), then the initial * User prompt."
 
   ;; Set the working directory to the agent dir, not the file location
   (setq-local default-directory  (nate-agent--working-directory))
-    
+  
   ;; Put the agent status up front so it's visible on narrow terminals.
   ;; Also strip rarely-useful clutter (mule-info, frame-id, misc-info, etc.).
   (setq-local mode-line-format
@@ -453,10 +503,15 @@ heading (with WORKING_DIRECTORY property), then the initial * User prompt."
 ;;; nate-agent.el ends here
 
 ;;;;; NOTES
-;;; TODO cancel: interrupt in-flight API requests and running tool calls
 ;;; TODO make tool call headings show a short input summary (eg ** Tool: read_buffer "init.el")
-;;; TODO add an interactive function for when a tool call stalls without writing a result
-;;; TODO add web search
+;;; TODO add an interactive function for when a tool call stalls without writing a result, some kind of "fix-buffer-state"
 ;;; TODO unify ui and history — they are inverses of the same serialisation process
 ;;; TODO fix shell command, sometimes the output starts before the whole begin/end line is fully written to the terminal. I think this happens when the command string contrains newlines. I think it only happens on slow commands. Change to a new approach
 ;;; TODO for create_buffer, guess src mode from filename to display.
+
+;;; TODO on lisp error trigger debugger? possibly implemented but never tested
+;;; TODO auto truncate long responses from some tools like find_files
+;;; TODO python script tool to avoid piping and escaping multi-line strings into a shell command
+;;; TODO better escaping of responses from the agent, sometimes when talking about the harness it returns tool headings that mess up the rest
+;;; TODO search_buffer should return context lines
+;;; TODO better tracking of in-flight requests

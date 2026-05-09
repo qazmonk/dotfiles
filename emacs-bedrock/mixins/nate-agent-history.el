@@ -147,6 +147,7 @@ Walk top-level headings in order:
   * User            -> message item with role \"user\" (skipped if empty)
   * Assistant       -> reasoning or message item based on tag
   * Tool: ...       -> function_call + function_call_output (if executed)
+  * Request         -> skipped (API request in flight or completed)
 All other top-level headings are ignored."
   (let ((tree (org-element-parse-buffer))
         history)
@@ -224,6 +225,8 @@ All other top-level headings are ignored."
          ;; Last heading is an executed tool - need to send results back
          ((and (string-prefix-p "Tool: " title) (member "executed" tags))
           'needs-continuation)
+         ;; Last heading is a Request - waiting for response
+         ((string= title "Request") 'in-progress)
          ;; Last heading is an Assistant with content - idle
          ((and (string= title "Assistant") (or (member "reasoning" tags) (member "message" tags)))
           'idle)
