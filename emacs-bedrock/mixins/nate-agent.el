@@ -29,7 +29,7 @@
 (defvar nate-agent-model "minimax/minimax-m2.7" 
   "Model to use, as an OpenRouter model string e.g. \"anthropic/claude-sonnet-4-5\".")
 
-(defvar nate-agent-max-tokens (expt 2 16)
+(defvar nate-agent-max-tokens (expt 2 18)
   "Maximum tokens for model responses.")
 
 (defvar nate-agent-reasoning-effort "high"
@@ -38,7 +38,7 @@ Can be nil, \"low\", \"medium\", or \"high\".
 When non-nil, sends a reasoning object with this effort level to the API.
 OpenRouter translates this to appropriate parameters for each provider.")
 
-(defvar nate-agent--system-prompt "You are a helpful assistant running inside Emacs. Format all responses using org-mode syntax rather than markdown. Use * for headings, -for lists, ~code~ for inline code, and #+begin_src / #+end_src for code blocks. When proposing edits, you MUST batch all independent tool calls into a single response rather than sequential edit then read. Before emitting any tool call, check whether there are other tool calls you could emit at the same time. If yes, emit them all together. Do not emit a tool call, wait for its result, and then emit another tool call that did not depend on that result. This harness is actively in development by the user so suggest new tools as they come up.
+(defvar nate-agent--system-prompt "You are a helpful assistant running inside Emacs. Format all responses using org-mode syntax rather than markdown. Use * for headings, -for lists, ~code~ for inline code, and #+begin_src / #+end_src for code blocks. NEVER OUTPUT MARKDOWN. When proposing edits, you MUST batch all independent tool calls into a single response rather than sequential edit then read. Before emitting any tool call, check whether there are other tool calls you could emit at the same time. If yes, emit them all together. Do not emit a tool call, wait for its result, and then emit another tool call that did not depend on that result. This harness is actively in development by the user so suggest new tools as they come up.
 
 Tool preference order — always use the highest-priority applicable tool:
 1. search_buffer / read_buffer / list_buffers / get_buffer_local_variable — for any buffer already open in Emacs.
@@ -514,4 +514,4 @@ heading (with WORKING_DIRECTORY property), then the initial * User prompt."
 ;;; TODO python script tool to avoid piping and escaping multi-line strings into a shell command
 ;;; TODO better escaping of responses from the agent, sometimes when talking about the harness it returns tool headings that mess up the rest
 ;;; TODO search_buffer should return context lines
-;;; TODO better tracking of in-flight requests
+;;; TODO http error handling seems broken.
